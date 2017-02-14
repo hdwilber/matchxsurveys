@@ -59,7 +59,8 @@ $container["spot"] = function ($container) {
             "dbname" => getenv("OS_DB_NAME"),
             "user" => getenv("OS_DB_USER"),
             "password" => getenv("OS_DB_PASSWORD"),
-            "host" => getenv("OS_DB_HOST").":".getenv("OS_DB_PORT"),
+            "host" => getenv("OS_DB_HOST"),
+            "port" => getenv("OS_DB_PORT"),
             "driver" => "pdo_mysql",
             "charset" => "utf8"
         ]);
