@@ -1,0 +1,64 @@
+<?php
+namespace App;
+
+use Spot\EntityInterface;
+use Spot\MapperInterface;
+use Spot\EventEmitter;
+
+use Tuupola\Base62;
+
+use Ramsey\Uuid\Uuid;
+use Psr\Log\LogLevel;
+
+class ArrayOption extends \Spot\Entity
+{
+    protected static $table = "matchs";
+    protected static $mapper = "App\Mapper\MatchMapper";
+
+    public static function fields()
+    {
+        return [
+            "id" => ["type" => "integer", "unsigned" => true, "autoincrement" => true],
+            "uid" => ["type" => "string", "length" => 50, "primary" => true, "unique" => true],
+            "match_id" => ["type" => "string"],
+            "option_id" => ["type" => "string"],
+            "value" => ['type' => 'number'],
+            "created_at"   => ["type" => "datetime", "value" => new \DateTime()],
+            "updated_at"   => ["type" => "datetime", "value" => new \DateTime()]
+        ];
+    }
+
+    public static function events(EventEmitter $emitter)
+    {
+        $emitter->on("beforeInsert", function (EntityInterface $entity, MapperInterface $mapper) {
+            $entity->uid = Base62::encode(random_bytes(16));
+        });
+
+        $emitter->on("beforeUpdate", function (EntityInterface $entity, MapperInterface $mapper) {
+            $entity->updated_at = new \DateTime();
+        });
+    }
+    public function timestamp()
+    {
+        return $this->updated_at->getTimestamp();
+    }
+
+    public function etag()
+    {
+        return md5($this->uid . $this->timestamp());
+    }
+
+    public function clear()
+    {
+        $this->data([
+            "option_id" => null,
+            "value" => null
+        ]);
+    }
+
+    public static function relations(MapperInterface $mapper, EntityInterface $entity)
+    {
+        return [
+        ];
+    }
+}
