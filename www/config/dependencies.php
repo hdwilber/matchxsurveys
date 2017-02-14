@@ -19,12 +19,12 @@ use Spot\Config;
 use Spot\Locator;
 use Doctrine\DBAL\Logging\MonologSQLLogger;
 
-$location = getenv("LOCATION");
 
 $container['pdo'] = function ($c) {
+    //$pdo = new PDO('mysql:host='.getenv("LOCAL_DB_HOST") . ';dbname=' . getenv("LOCAL_DB_NAME"), getenv("LOCAL_DB_USER"), getenv("LOCAL_DB_PASSWORD") );
+    $location = getenv("LOCATION");
     if ($location == "local")
-        $pdo = new PDO('mysql:host='.getenv("DB_HOST") . ';dbname=' . getenv("DB_NAME"), getenv("DB_USER"), getenv("DB_PASSWORD") );
-    // When in openshift
+        $pdo = new PDO('mysql:host='.getenv("LOCAL_DB_HOST") . ';dbname=' . getenv("LOCAL_DB_NAME"), getenv("LOCAL_DB_USER"), getenv("LOCAL_DB_PASSWORD") );
     else 
         $pdo = new PDO('mysql:host='.getenv("OS_DB_HOST"). ';port='.getenv("OS_DB_PORT") . ';dbname=' . getenv("OS_DB_NAME"), getenv("OS_DB_USER"), getenv("OS_DB_PASSWORD") );
 
@@ -35,15 +35,36 @@ $container['pdo'] = function ($c) {
 
 $container["spot"] = function ($container) {
 
+    $location = getenv("LOCATION");
     $config = new Config();
-    $mysql = $config->addConnection("mysql", [
-        "dbname" => getenv("DB_NAME"),
-        "user" => getenv("DB_USER"),
-        "password" => getenv("DB_PASSWORD"),
-        "host" => getenv("DB_HOST"),
-        "driver" => "pdo_mysql",
-        "charset" => "utf8"
-    ]);
+    //$mysql = $config->addConnection("mysql", [
+        //"dbname" => getenv("LOCAL_DB_NAME"),
+        //"user" => getenv("LOCAL_DB_USER"),
+        //"password" => getenv("LOCAL_DB_PASSWORD"),
+        //"host" => getenv("LOCAL_DB_HOST"),
+        //"driver" => "pdo_mysql",
+        //"charset" => "utf8"
+    //]);
+    if ($location == "local") {
+        $mysql = $config->addConnection("mysql", [
+            "dbname" => getenv("LOCAL_DB_NAME"),
+            "user" => getenv("LOCAL_DB_USER"),
+            "password" => getenv("LOCAL_DB_PASSWORD"),
+            "host" => getenv("LOCAL_DB_HOST"),
+            "driver" => "pdo_mysql",
+            "charset" => "utf8"
+        ]);
+    } else {
+        $mysql = $config->addConnection("mysql", [
+            "dbname" => getenv("OS_DB_NAME"),
+            "user" => getenv("OS_DB_USER"),
+            "password" => getenv("OS_DB_PASSWORD"),
+            "host" => getenv("OS_DB_HOST").":".getenv("OS_DB_PORT"),
+            "driver" => "pdo_mysql",
+            "charset" => "utf8"
+        ]);
+
+    }
 
     $spot = new Locator($config);
 
