@@ -47,6 +47,15 @@ class TakenQuiz extends \Spot\Entity
         return md5($this->uid . $this->timestamp());
     }
 
+    public function getStartQuestion($spot) {
+        $step = $spot->mapper('App\Step')->findById($this->questionary->start_id);
+        while(!$step->check($spot, 'show', $this)){
+            $step = $spot->mapper('App\Step')->findById($step->next_id);
+        }
+        $question = $spot->mapper('App\Question')->findById($step->start_id);
+        return $question->getNext($spot, $this);
+    }
+   
     public function clear()
     {
         $this->data([

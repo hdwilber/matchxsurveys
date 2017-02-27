@@ -119,11 +119,10 @@ $app->get(getenv("API_ROOT"). "/questions/{uid}", function ($request, $response,
     }
     $mapper = $this->spot->mapper("App\Question");
 
-    if (false === $question= $mapper->getById($arguments["uid"]))
+    if (false === $question = $mapper->findById($arguments["uid"]))
     {
         throw new NotFoundException("Question not found.", 404);
     };
-
 
     /* Add Last-Modified and ETag headers to response. */
     $response = $this->cache->withEtag($response, $question->etag());
@@ -141,6 +140,9 @@ $app->get(getenv("API_ROOT"). "/questions/{uid}", function ($request, $response,
     $fractal->setSerializer(new DataArraySerializer);
     $resource = new Item($question, new QuestionTransformer);
     $data = $fractal->createData($resource)->toArray();
+
+    //$logic = $question->logics->filter( function ($l) { return ($l->action == "show"); } )[0];
+    //$data['show'] = $logic->evaluate();
 
     return $response->withStatus(200)
         ->withHeader("Content-Type", "application/json")

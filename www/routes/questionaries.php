@@ -96,6 +96,9 @@ $app->get(getenv("API_ROOT"). "/questionaries/{uid}", function ($request, $respo
         return $response->withStatus(304);
     }
 
+
+    $questionary->steps = $this->spot->mapper("App\Step")->findAllSortedFromQuestionary($questionary);
+
     /* Serialize the response data. */
     $fractal = new Manager();
     $fractal->setSerializer(new DataArraySerializer);

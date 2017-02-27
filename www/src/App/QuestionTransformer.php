@@ -17,7 +17,6 @@ class QuestionTransformer extends Fractal\TransformerAbstract
             "next_id" => (string)$question->next_id? : null,
             "mandatory" => (string)$question->mandatory ? : null,
             "options" => $question->options ? : null,
-            "logics" => $question->logics? : null,
         ];
     }
 }

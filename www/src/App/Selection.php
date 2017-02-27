@@ -58,6 +58,18 @@ class Selection extends \Spot\Entity
         ]);
     }
 
+    public function findLast($spot, $tq) {
+        if ($this->next_id == null) {
+            return $this;
+        } else {
+            $next = $spot->mapper("App\Selection")->findById($this->next_id);
+            while($next->next_id != null) {
+                $next = $spot->mapper("App\Selection")->findById($this->next_id);
+            }
+            return $next;
+        }
+    }
+
     public static function relations(MapperInterface $mapper, EntityInterface $entity)
     {
         return [

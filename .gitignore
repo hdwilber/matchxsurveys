@@ -1,1 +1,5 @@
 *.swp
+www/vendor
+www/composer.lock
+www/public/mef
+www/logs

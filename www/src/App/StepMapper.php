@@ -3,6 +3,8 @@ namespace App\Mapper;
 use Spot\Mapper;
 
 use App\Questionary;
+use Spot\Entity;
+use Spot\Entity\Collection;
 
 class StepMapper extends Mapper
 {
@@ -21,7 +23,6 @@ class StepMapper extends Mapper
             return false;
         }
     }
-
     public function findAllFromQuestionary($questionary)
     {
         if (isset($questionary['uid'])) {
@@ -29,8 +30,20 @@ class StepMapper extends Mapper
         } else {
             return false;
         } 
-
     } 
+
+    public function findAllSortedFromQuestionary($questionary) {
+        $next = $this->where(['questionary_id'=>$questionary->uid, 'uid'=>$questionary->start_id])->first();;
+        $arr =[];
+        if ($next !== false) {
+            array_push($arr, $next);
+            while($next->next_id != null) {
+                $next = $this->where(['uid'=>$next->next_id])->first();
+                array_push($arr, $next);
+            }
+        }
+        return new Collection($arr);
+    }
 
     public function getStartFromQuestionary($questionary) {
         if (isset($questionary['start_id'])) {

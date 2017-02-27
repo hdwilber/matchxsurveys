@@ -37,14 +37,6 @@ $container["spot"] = function ($container) {
 
     $location = getenv("LOCATION");
     $config = new Config();
-    //$mysql = $config->addConnection("mysql", [
-        //"dbname" => getenv("LOCAL_DB_NAME"),
-        //"user" => getenv("LOCAL_DB_USER"),
-        //"password" => getenv("LOCAL_DB_PASSWORD"),
-        //"host" => getenv("LOCAL_DB_HOST"),
-        //"driver" => "pdo_mysql",
-        //"charset" => "utf8"
-    //]);
     if ($location == "local") {
         $mysql = $config->addConnection("mysql", [
             "dbname" => getenv("LOCAL_DB_NAME"),

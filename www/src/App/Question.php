@@ -54,6 +54,82 @@ class Question extends \Spot\Entity
         return md5($this->uid . $this->timestamp());
     }
 
+
+    public function check($spot, $action, $tq) {
+        $ls = $spot->mapper('App\Logic')->where(['target_type'=>'question', 'target_id'=>$this->uid, 'action'=>$action])->first();
+        if ($ls === false)
+            return null;
+        else 
+            return $ls->evaluate($spot, $tq);
+    }
+    public function checkVisibility($spot, $tq) {
+        $show = $this->check($spot, 'show', $tq);
+        $hide = $this->check($spot, 'hide', $tq);
+
+        if (!isset($hide) && !isset($show)) {
+            return true;
+        }
+        if (isset($hide)) {
+            return !$hide;
+        }
+        else if(isset($show)){
+            return $show;
+        }
+    }
+
+
+    public function findNext($spot, $tq) {
+        if ($this->next_id == null) {
+            $step = $spot->mapper('App\Step')->findById($this->step_id);
+
+            $nextStep = $spot->mapper('App\Step')->findById($step->next_id);
+            while(!$nextStep->checkVisibility($spot, $tq)) {
+                if ($nextStep->next_id != null) {
+                    $nextStep = $spot->mapper('App\Step')->findById($nextStep->next_id);
+                    if ($nextStep->start_id == null) {
+                        $nextStep = $spot->mapper('App\Step')->findById($nextStep->next_id);
+                    }
+                }
+                else {
+                    $nextStep = false;
+                    break;
+                }
+            }
+            if ($nextStep === false) {
+                throw NotFoundException("End of Steps Reached", 404);
+            }
+            $question = $spot->mapper('App\Question')->findById($nextStep->start_id);
+            if (!$question->checkVisibility($spot, $tq)) {
+                $nextQuestion= $spot->mapper('App\Question')->findById($question->next_id);
+                while(!$nextQuestion->checkVisibility($spot, $tq)) {
+                    if ($nextQuestion->next_id != null) {
+                        $nextQuestion = $spot->mapper('App\Question')->findById($nextQuestion);
+                    } else {
+                        $nextQuestion = false;
+                        break;
+                    }
+                }
+                if ($nextQuestion === false) throw new NotFoundException("End of Questions reached");
+                return $nextQuestion;
+            }
+            return $question;
+        } else {
+            $nextQuestion = $spot->mapper('App\Question')->findById($this->next_id);
+            if ($nextQuestion === false) 
+                throw new NotFoundException("FindNext Question: next Question not found" ,404);
+            while(!$nextQuestion->checkVisibility($spot, $tq)) {
+                if ($nextQuestion->next_id != null) {
+                    $nextQuestion = $spot->mapper('App\Question')->findById($nextQuestion->next_id);
+                } else {
+                    $nextQuestion = $nextQuestion->findNext($spot, $tq);
+                    break;
+                }
+            }
+            if ($nextQuestion === false) throw new NotFoundException("End of Questions reached");
+            return $nextQuestion;
+        }
+    }
+
     public function clear()
     {
         $this->data([

@@ -47,8 +47,7 @@ $app->get(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/selections", functio
     if ($takenQuiz === false) {
         throw new NotFoundException("Taken Quiz not found", 404);
     } else {
-        $takenQuizx = $takenQuiz->toArray();
-        $first = $mapper->findLastModifiedFromTakenQuiz($this->token->getUser(), $takenQuizx);
+        $first = $mapper->findLastModifiedFromTakenQuiz($this->token->getUser(), $takenQuiz);
 
         if ($first) {
             $response = $this->cache->withEtag($response, $first->etag());
@@ -59,7 +58,7 @@ $app->get(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/selections", functio
             return $response->withStatus(304);
         }
 
-        $selections = $mapper->findAllFromTakenQuiz($this->token->getUser(), $takenQuizIdx);
+        $selections = $mapper->findAllFromTakenQuiz($this->token->getUser(), $takenQuiz);
 
         /* Serialize the response data. */
         $fractal = new Manager();
@@ -72,7 +71,6 @@ $app->get(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/selections", functio
             ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
     }
 });
-
 $app->post(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/selections", function ($request, $response, $arguments) {
 
     if (false === $this->token->hasScope(["question.all", "question.list"])) {
@@ -89,73 +87,168 @@ $app->post(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/selections", functi
 
     $takenQuiz = $tqMapper->findById($arguments['takenQuizId']);
     $data = [];
+    $question = null;
+    $step = null;
+    $selection = null;
+
+    if ($takenQuiz === false) {
+        throw new NotFoundException("Taken Quiz not found", 404);
+    } 
+    $questionary = $quMapper->findById($takenQuiz->questionary_id);
+
+    $body = $request->getParsedBody();
+    if (!isset($body['uid'])) {
+        $selections = $mapper->findAllFromTakenQuiz($this->token->getUser(), $takenQuiz);
+        if( $selections->count() == 0 ){ 
+            // There are no selections, create a new
+            $step = $stMapper->findById($questionary->start_id);
+            if ($step === false) {
+                throw new NotFoundException("Step not found", 404);
+            } 
+            // Going to question starting question
+            $question = $qeMapper->findById($step->start_id);
+            if ($question === false) {
+                throw new NotFoundException("Question not found", 404);
+            } 
+            // Preparing the new selection and (step, question)
+            $selection = new Selection(['taken_quiz_id' => $takenQuiz->uid, 'question_id'=> $question->uid, 'user_id'=>$this->token->getUser()]);
+            $mapper->save($selection);
+        } else {
+            $selection = $selections->first();
+            // Find the last selection
+            $selection = $selection->findLast($this->spot, $takenQuiz);
+
+            $question = $qeMapper->findById($selection->question_id);
+            // Check if selection has option ( *fix for value, too )
+            if ($selection->option_id == null && $selection->value == null) {
+                $step = $stMapper->findById($question->step_id);
+            } else {
+                //User has alreasy chosen the option
+                // Searching for next allowed question
+                $question = $question->findNext($this->spot, $takenQuiz);
+                if ($question === false) {
+                    throw new NotFoundException("End Reached", 404);
+                }
+                $selection2 = new Selection(['taken_quiz_id' => $takenQuiz->uid, 'question_id'=> $question->uid, 'user_id'=>$this->token->getUser(), 'prev_id' => $selection->uid]);
+                $mapper->save($selection2);
+                $selection->data(['next_id' => $selection2->uid]);
+                $mapper->save($selection);
+                // Returning as selection
+                $selection = $selection2;
+            }
+        }
+    } else {
+        $this->logger->addInfo("-----PARSING BODY DATA ----");
+        $selection = $mapper->getById($body['uid']);
+        if ($selection === false) {
+            throw new NotFountException("Selection not found", 404);
+        } else {
+            $question = $qeMapper->findById($selection->question_id);
+            if ($body['option_id']==null && $body['value']==null) {
+                // The user has not chosen an option neither a level
+            } else {
+                // Option chosen, get next question and selection
+                $this->logger->addInfo("** The select has at least (optino or level) chosen");
+
+                // Save data for current Selection
+                $auxbody = ['option_id' => isset($body['option_id']) ? $body['option_id']: null, 'value' => isset($body['value']) ? $body['value'] :null];
+                $selection->data($auxbody);
+                $mapper->save($selection);
+
+
+                //Looking for next allowed question
+                $question = $question->findNext($this->spot, $takenQuiz);
+                if ($question === false) 
+                    $this->logger->addInfo("Question end reached. Look for next Step");
+                $selection2 = new Selection(['taken_quiz_id' => $takenQuiz->uid, 'question_id'=>$question->uid, 'user_id'=>$this->token->getUser(), 'prev_id'=>$selection->uid]);
+                $mapper->save($selection2);
+                $selection->data(['next_id'=>$selection2->uid]);
+                $mapper->save($selection);
+                $selection = $selection2;
+            }
+        }
+        $step = $stMapper->findById($question->step_id);
+    }
+    $resourceS = new Item($step, new StepTransformer);
+    $resourceQ = new Item($question, new QuestionTransformer);
+    $data['step'] = $fractal->createData($resourceS)->toArray();
+    $data['question'] = $fractal->createData($resourceQ)->toArray();
+    $data['selection'] = $selection->uid;
+    return $response->withStatus(201)
+        ->withHeader("Content-Type", "application/json")
+        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+});
+
+
+$app->post(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/selections2", function ($request, $response, $arguments) {
+
+    if (false === $this->token->hasScope(["question.all", "question.list"])) {
+        throw new ForbiddenException("Token not allowed to create selections.", 403);
+    }
+
+    $mapper = $this->spot->mapper('App\Selection');
+    $tqMapper = $this->spot->mapper('App\TakenQuiz');
+    $quMapper = $this->spot->mapper('App\Questionary');
+    $stMapper = $this->spot->mapper('App\Step');
+    $qeMapper = $this->spot->mapper('App\Question');
+    $fractal = new Manager();
+    $fractal->setSerializer(new DataArraySerializer);
+
+    $takenQuiz = $tqMapper->findById($arguments['takenQuizId']);
+    $data = [];
+    $question = null;
+    $step = null;
+    $selectionId = null;
+
     if ($takenQuiz === false) {
         throw new NotFoundException("Taken Quiz not found", 404);
     } else {
-        $takenQuizx = $takenQuiz->toArray();
-        $questionary = $quMapper->findById($takenQuizx['questionary_id']);
+        $questionary = $quMapper->findById($takenQuiz->questionary_id);
 
         $body = $request->getParsedBody();
         if (!isset($body['uid'])) {
-            $selections = $mapper->findAllFromTakenQuiz($this->token->getUser(), $takenQuizx);
+            $selections = $mapper->findAllFromTakenQuiz($this->token->getUser(), $takenQuiz);
             if( $selections->count() == 0 ){ 
                 // There are no selections, create a new
-                $step = $stMapper->findById($questionary->toArray()['start_id']);
+                $step = $stMapper->findById($questionary->start_id);
                 if ($step === false) {
                     throw new NotFoundException("Step not found", 404);
                 } else {
-                    $question = $qeMapper->findById($step->toArray()['start_id']);
+                    $question = $qeMapper->findById($step->start_id);
                     if ($question === false) {
                         throw new NotFoundException("Question not found", 404);
                     } else {
                         // Preparing the new selection and (step, question)
-                        $sele = new Selection(['taken_quiz_id' => $takenQuizx['uid'], 'question_id'=> $question->toArray()['uid'], 'user_id'=>$this->token->getUser()]);
+                        $sele = new Selection(['taken_quiz_id' => $takenQuiz->uid, 'question_id'=> $question->uid, 'user_id'=>$this->token->getUser()]);
                         $mapper->save($sele);
-
-                        $resourceS = new Item($step, new StepTransformer);
-                        $resourceQ = new Item($question, new QuestionTransformer);
-                        $data['step'] = $fractal->createData($resourceS)->toArray();
-                        $data['question'] = $fractal->createData($resourceQ)->toArray();
-                        $data['selection'] = $sele->toArray()['uid'];
+                        $selectionId = $sele->uid;
                     }
                 }
             } else {
                 $sele = $selections->first();
-                $selex = $sele->toArray();
-
                 // Find the last selection 
-                while($selex['next_id'] != null) {
-                    $sele = $mapper->findById($selex['next_id']);
-                    $selex = $sele->toArray();
+                while($sele->next_id != null) {
+                    $sele = $mapper->findById($sele->next_id);
                 }
-                $question = $qeMapper->findById($selex['question_id']);
+                $question = $qeMapper->findById($sele->question_id);
                 // Check if selection has option ( *fix for value, too )
-                if ($selex['option_id'] == null && $selex['value'] == null) {
-                    $step = $stMapper->findById($question->toArray()['step_id']);
-                    $resourceS = new Item($step, new StepTransformer);
-                    $resourceQ = new Item($question, new QuestionTransformer);
-                    $data['step'] = $fractal->createData($resourceS)->toArray();
-                    $data['question'] = $fractal->createData($resourceQ)->toArray();
-                    $data['selection'] = $selex['uid'];
+                if ($sele->option_id == null && $sele->value == null) {
+                    $step = $stMapper->findById($question->step_id);
+                    $selectionId = $sele->uid;
                 } else {
                     //User has alreasy chosen the option
-                    $questionx = $question->toArray();
-                    if ($questionx['next_id'] == null) {
+                    if ($question->next_id == null) {
                         // We have reach to end of group;
                         $this->logger->addInfo("Need to implement this");
                     } else {
                         // We have a next question. Then, create a new selection
-                        $question = $qeMapper->findById($questionx['next_id']);
-                        $step = $stMapper->findById($question->toArray()['step_id']);
-                        $resourceS = new Item($step, new StepTransformer);
-                        $resourceQ = new Item($question, new QuestionTransformer);
-                        $data['step'] = $fractal->createData($resourceS)->toArray();
-                        $data['question'] = $fractal->createData($resourceQ)->toArray();
-                        $newSele = new Selection(['taken_quiz_id' => $takenQuizx['uid'], 'question_id'=> $question->toArray()['uid'], 'user_id'=>$this->token->getUser(), 'prev_id' => $selex['uid']]);
+                        $question = $qeMapper->findById($question->next_id);
+                        $step = $stMapper->findById($question->step_id);
+                        $newSele = new Selection(['taken_quiz_id' => $takenQuiz->uid, 'question_id'=> $question->uid, 'user_id'=>$this->token->getUser(), 'prev_id' => $sele->uid]);
                         $mapper->save($newSele);
-                        $sele->data(['next_id' => $newSele->toArray()['uid']]);
+                        $sele->data(['next_id' => $newSele->uid]);
                         $mapper->save($sele);
-                        $data['selection'] = $newSele->toArray()['uid'];
+                        $selectionId = $newSele->uid;
                     }
                 }
             }
@@ -165,97 +258,78 @@ $app->post(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/selections", functi
             if ($sele === false) {
                 throw new NotFountException("Selection not found", 404);
             } else {
-                $selex = $sele->toArray();
-                $question = $qeMapper->findById($selex['question_id']);
-                $questionx = $question->toArray();
-                $step = $stMapper->findById($question->toArray()['step_id']);
-                $stepx = $step->toArray();
+                $question = $qeMapper->findById($sele->question_id);
+                $step = $stMapper->findById($question->step_id);
                 $this->logger->addInfo("-----CHECKING OPTION_ID and VALUE----");
                 $this->logger->addInfo("The body", $body);
                 if ($body['option_id']==null && $body['value']==null) {
                     $this->logger->addInfo("** The select has not an chosen option neither a chosen level");
                     // If not chosen an option
-                    $resourceS = new Item($step, new StepTransformer);
-                    $resourceQ = new Item($question, new QuestionTransformer);
-                    $data['step'] = $fractal->createData($resourceS)->toArray();
-                    $data['question'] = $fractal->createData($resourceQ)->toArray();
-                    $data['selection'] = $selex['uid'];
+                    $selectionId = $sele->uid;
                 } else {
                     // Option chosen, get next question and selection
                     $this->logger->addInfo("** The select has at least (optino or level) chosen");
-                    if ($questionx['next_id'] == null) {
+                    if ($question->next_id == null) {
                         // No more quetions, End reached
                         $this->logger->addInfo("Question end reached. Look for next Step");
 
-                        if ($stepx['next_id'] == null) {
+                        if ($step->next_id == null) {
                             $this->logger->addInfo("Step has not a next id. I think we have reached at end of Steps");
                         } else {
-                            $nextStep = $stMapper->findById($stepx['next_id']);
+                            $nextStep = $stMapper->findById($step->next_id);
                             if ($nextStep === false) {
                                 $this->logger->addInfo('Next Step not found. Exception');
                                 throw new NotFoundException('Step not found', 404);
                             } else {
-                                $nextStepx = $nextStep->toArray();
-                                if ($nextStepx['start_id'] == null) {
+                                if ($nextStep->start_id == null) {
                                     $this->logger->addInfo("This has not a start. Looking for next steps");
 
-                                    while($nextStepx['start_id']!=null ) {
-                                        $nextStep = $stMapper->findById($nextStepx['next_id']);
+                                    while($nextStep->start_id != null ) {
+                                        $nextStep = $stMapper->findById($nextStep->next_id);
                                     }
 
-                                    if ($nextStepx['start_id'] == null) {
+                                    if ($nextStep->start_id == null) {
                                         $this->logger->addInfo("REACHED THE END OF Steps");
                                     } else {
-                                        $question = $qeMapper->findById($nextStepx['start_id']);
-                                        $resourceS = new Item($nextStep, new StepTransformer);
-                                        $resourceQ = new Item($question, new QuestionTransformer);
-                                        $data['step'] = $fractal->createData($resourceS)->toArray();
-                                        $data['question'] = $fractal->createData($resourceQ)->toArray();
-                                        $newSele = new Selection(['taken_quiz_id' => $takenQuizx['uid'], 'question_id'=> $question->toArray()['uid'], 'user_id'=>$this->token->getUser(), 'prev_id' => $selex['uid']]);
+                                        $question = $qeMapper->findById($nextStep->start_id);
+                                        $newSele = new Selection(['taken_quiz_id' => $takenQuiz->uid, 'question_id'=> $question->uid, 'user_id'=>$this->token->getUser(), 'prev_id' => $sele->uid]);
                                         $mapper->save($newSele);
-                                        $auxbody = ['next_id' => $newSele->toArray()['uid'], 'option_id' => isset($body['option_id']) ? $body['option_id']: null, 'value' => isset($body['value']) ? $body['value'] :null];
+                                        $auxbody = ['next_id' => $newSele->uid, 'option_id' => isset($body['option_id']) ? $body['option_id']: null, 'value' => isset($body['value']) ? $body['value'] :null];
                                         $sele->data($auxbody);
                                         $mapper->save($sele);
-                                        $data['selection'] = $newSele->toArray()['uid'];
+                                        $selectionId = $newSele->uid;
                                     }
                                 } else {
-                                    $question = $qeMapper->findById($nextStepx['start_id']);
-                                    $resourceS = new Item($nextStep, new StepTransformer);
-                                    $resourceQ = new Item($question, new QuestionTransformer);
-                                    $data['step'] = $fractal->createData($resourceS)->toArray();
-                                    $data['question'] = $fractal->createData($resourceQ)->toArray();
-                                    $newSele = new Selection(['taken_quiz_id' => $takenQuizx['uid'], 'question_id'=> $question->toArray()['uid'], 'user_id'=>$this->token->getUser(), 'prev_id' => $selex['uid']]);
+                                    $question = $qeMapper->findById($nextStep->start_id);
+                                    $newSele = new Selection(['taken_quiz_id' => $takenQuiz->uid, 'question_id'=> $question->uid, 'user_id'=>$this->token->getUser(), 'prev_id' => $sele->uid]);
                                     $mapper->save($newSele);
-                                    $auxbody = ['next_id' => $newSele->toArray()['uid'], 'option_id' => isset($body['option_id']) ? $body['option_id']: null, 'value' => isset($body['value']) ? $body['value'] :null];
+                                    $auxbody = ['next_id' => $newSele->uid, 'option_id' => isset($body['option_id']) ? $body['option_id']: null, 'value' => isset($body['value']) ? $body['value'] :null];
                                     $sele->data($auxbody);
                                     $mapper->save($sele);
-                                    $data['selection'] = $newSele->toArray()['uid'];
+                                    $selectionId = $newSele->uid;
                                 }
-
-
                             }
                         }
                     } else {
-                        $question = $qeMapper->findById($questionx['next_id']);
-                        $step = $stMapper->findById($question->toArray()['step_id']);
-                        $resourceS = new Item($step, new StepTransformer);
-                        $resourceQ = new Item($question, new QuestionTransformer);
-                        $data['step'] = $fractal->createData($resourceS)->toArray();
-                        $data['question'] = $fractal->createData($resourceQ)->toArray();
-                        $newSele = new Selection(['taken_quiz_id' => $takenQuizx['uid'], 'question_id'=> $question->toArray()['uid'], 'user_id'=>$this->token->getUser(), 'prev_id' => $selex['uid']]);
+                        $question = $qeMapper->findById($question->next_id);
+                        $step = $stMapper->findById($question->step_id);
+                        $newSele = new Selection(['taken_quiz_id' => $takenQuiz->uid, 'question_id'=> $question->uid, 'user_id'=>$this->token->getUser(), 'prev_id' => $sele->uid]);
                         $mapper->save($newSele);
-                        $body = ['next_id' => $newSele->toArray()['uid'], 'option_id' => isset($body['option_id']) ? $body['option_id']: null, 'value' => isset($body['value']) ? $body['value'] :null];
+                        $body = ['next_id' => $newSele->uid, 'option_id' => isset($body['option_id']) ? $body['option_id']: null, 'value' => isset($body['value']) ? $body['value'] :null];
                         $sele->data($body);
                         $this->logger->addInfo("This is the data",$body );
                         $mapper->save($sele);
-                        $data['selection'] = $newSele->toArray()['uid'];
+                        $selectionId = $newSele->uid;
                     }
                 }
-
             }
         }
-
     }
+    $resourceS = new Item($step, new StepTransformer);
+    $resourceQ = new Item($question, new QuestionTransformer);
+    $data['step'] = $fractal->createData($resourceS)->toArray();
+    $data['question'] = $fractal->createData($resourceQ)->toArray();
+    $data['selection'] = $selectionId;
     return $response->withStatus(201)
         ->withHeader("Content-Type", "application/json")
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));

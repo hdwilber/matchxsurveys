@@ -11,15 +11,15 @@ class SelectionMapper extends Mapper
         return $this->where(['uid'=>$uid])->first();
     }
     public function findLastModifiedFromTakenQuiz($uid, $tq) {
-        if (isset($tq['uid'])) {
-            return $this->all()->where(['taken_quiz_id' =>$tq['uid'], 'user_id' => $uid])->sort(['updated_at'=>"DESC"])->first();
+        if (isset($tq->uid)) {
+            return $this->all()->where(['taken_quiz_id' =>$tq->uid, 'user_id' => $uid])->sort(['updated_at'=>"DESC"])->first();
         } else {
             return false;
         }
     }
     public function findAllFromTakenQuiz($uid, $tq) {
-        if (isset($tq['uid'])) {
-            return $this->all()->where(['taken_quiz_id' =>$tq['uid'], 'user_id' => $uid])->order(['updated_at'=>'DESC']);
+        if (isset($tq->uid)) {
+            return $this->all()->where(['taken_quiz_id' =>$tq->uid, 'user_id' => $uid])->order(['updated_at'=>'DESC']);
         } else {
             return false;
         }

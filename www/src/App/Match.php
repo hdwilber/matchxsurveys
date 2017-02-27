@@ -67,7 +67,7 @@ class Match extends \Spot\Entity
         $question = $quMapper->findById($this->target_question_id);
         $option = $opMapper->findById($this->target_option_id);
 
-        return $this->operator . ' to ' . $question->code . ": " . $option->text;
+        return $question->code . ": " . $option->text;
     }
 
     public static function relations(MapperInterface $mapper, EntityInterface $entity)

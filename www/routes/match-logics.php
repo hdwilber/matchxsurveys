@@ -79,12 +79,12 @@ $app->post(getenv("API_ROOT"). "/match-logics", function ($request, $response, $
     $loMapper = $this->spot->mapper("App\Logic");
 
     $body = $request->getParsedBody();
-    if (!isset($body['parent_id'])) {
-        throw new PreconditionRequiredException("parent_id is required different to null.", 428);
-    }
-    if ($body['parent_id'] == null) {
-        throw new PreconditionRequiredException("parent_id is required different to null.", 428);
-    } 
+    //if (!isset($body['parent_id'])) {
+        //throw new PreconditionRequiredException("parent_id is required different to null.", 428);
+    //}
+    //if ($body['parent_id'] == null) {
+        //throw new PreconditionRequiredException("parent_id is required different to null.", 428);
+    //} 
 
     $parent = $mapper->findById($body['parent_id']);
     if ($parent === false) {
@@ -286,10 +286,12 @@ $app->delete(getenv("API_ROOT"). "/match-logics/{uid}", function ($request, $res
     }
 
     /* Load existing match using provided uid */
-    if (false === $match = $this->spot->mapper("App\MatchLogic")->getById($arguments['uid'])) {
+    if (false === $matchLogic = $this->spot->mapper("App\MatchLogic")->findById($arguments['uid'])) {
         throw new NotFoundException("Match Logic not found.", 404);
     };
 
+
+    $matchLogic ->removeChildren($this->spot);
     $this->spot->mapper("App\MatchLogic")->delete($matchLogic);
 
     $data["status"] = "ok";

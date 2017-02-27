@@ -30,6 +30,44 @@ use League\Fractal\Resource\Item;
 use League\Fractal\Resource\Collection;
 use League\Fractal\Serializer\DataArraySerializer;
 
+$app->post(getenv("API_ROOT"). "/match-logics/{matchLogicId}/matchs", function ($request, $response, $arguments) {
+    if (false === $this->token->hasScope(["question.all", "question.create"])) {
+        throw new ForbiddenException("Token not allowed to create matchs.", 403);
+    }
+    $mapper = $this->spot->mapper('App\Match');
+    $mlMapper = $this->spot->mapper("App\MatchLogic");
+
+    $matchLogic = $mlMapper->findById($arguments['matchLogicId']);
+    if ($matchLogic === false) {
+        throw new NotFoundException("Match: MatchLogic not Found", 404);
+    } else {
+        $body = $request->getParsedBody();
+        $body["user_id"] = $this->token->getUser();
+        $match= new Match($body);
+        $mapper->save($match);
+
+        $matchLogic->data(['target_type' => 'match']);
+        $matchLogic->data(['target_id' => $match->uid]);
+        $mlMapper->save($matchLogic);
+
+        /* Add Last-Modified and ETag headers to response. */
+        $response = $this->cache->withEtag($response, $match->etag());
+        $response = $this->cache->withLastModified($response, $match->timestamp());
+
+        /* Serialize the response data. */
+        $fractal = new Manager();
+        $fractal->setSerializer(new DataArraySerializer);
+        $resource = new Item($match, new MatchTransformer);
+        $data = $fractal->createData($resource)->toArray();
+        $data["status"] = "ok";
+        $data["message"] = "New match created";
+        return $response->withStatus(201)
+            ->withHeader("Content-Type", "application/json")
+            ->withHeader("Location", $data["data"]["links"]["self"])
+            ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+    }
+});
+
 $app->get(getenv("API_ROOT"). "/questions/{questionId}/matchs", function ($request, $response, $arguments) {
 
     /* Check if token has needed scope. */

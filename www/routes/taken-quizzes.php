@@ -29,10 +29,9 @@ $app->get(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/questions/{questionI
     if ($question === false) throw new NotFoundException("Taken Quiz: Question not found", 404);
 
     $data = [];
-    $this->logger->addInfo("Logics Array", $question->logics->toArray());
-    foreach($question->logics as $logic) {
-        $data[$logic->action] = $logic->evaluate($this->spot, $takenQuiz );
-    }
+    $data['show'] = $question->check($this->spot, 'show', $takenQuiz); 
+    $data['hide'] = $question->check($this->spot, 'hide', $takenQuiz); 
+    $data['visibility'] = $question->checkVisibility($this->spot, $takenQuiz); 
 
     return $response->withStatus(200)
         ->withHeader("Content-Type", "application/json")

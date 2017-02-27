@@ -39,11 +39,15 @@ $app->get(getenv("API_ROOT"). "/questionaries/{questionaryId}/steps", function (
         if ($this->cache->isNotModified($request, $response)) {
             return $response->withStatus(304);
         }
-        $steps = $mapper->findAllFromQuestionary($questionaryx);
+        $steps = $mapper->findAllSortedFromQuestionary($questionary);
+
         /* Serialize the response data. */
         $fractal = new Manager();
         $fractal->setSerializer(new DataArraySerializer);
         $resource = new Collection($steps, new StepTransformer);
+
+
+
         $data = $fractal->createData($resource)->toArray();
 
         return $response->withStatus(200)

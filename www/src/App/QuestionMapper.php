@@ -5,7 +5,7 @@ use Spot\Mapper;
 class QuestionMapper extends Mapper
 {
     public function findById($uid) {
-        return $this->where(['uid'=>$uid])->with(['options', 'logics'])->first();
+        return $this->where(['uid'=>$uid])->with(['options'])->first();
     }
     public function findLastModifiedFromStep($step) {
         if(isset($step['uid'])) {
@@ -16,7 +16,7 @@ class QuestionMapper extends Mapper
     }
     public function findAllFromStep($step) {
         if (isset($step['uid'])) {
-            return $this->all()->where(['step_id' => $step['uid']])->with(['options', 'logics']);
+            return $this->all()->where(['step_id' => $step['uid']])->with(['options']);
         } else {
             return false;
         }
@@ -25,7 +25,7 @@ class QuestionMapper extends Mapper
     public function getById($uid)
     {
         return $this->where(['uid' => $uid])
-            ->with(["options", "logics"])
+            ->with(["options"])
             ->order(['sort' => 'DESC']);
     }
     public function getByIdFromStep($suid, $uid) {

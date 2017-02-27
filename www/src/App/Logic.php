@@ -30,7 +30,8 @@ class Logic extends \Spot\Entity
         return [
             "id" => ["type" => "integer", "unsigned" => true, "autoincrement" => true],
             "uid" => ["type" => "string", "length" => 50, "primary" => true, "unique" => true],
-            "question_id" => ["type" => "string", "length" => 50 ],
+            "target_id" => ["type" => "string", "length" => 50 ],
+            "target_type" => ["type" => "string", "length" => 50 ],
             "match_logic_id" => ["type" => "string", "length" => 50 ],
             "action" => ["type" => "string", "length" => 50 ],
             "user_id" => ["type" => "string"],
@@ -69,6 +70,14 @@ class Logic extends \Spot\Entity
             throw new NotFoundException("Logic: MatchLogic not found", 404);
         }
         return $matchLogic->evaluate($spot, $tq);
+    }
+    public function removeChildren($spot) {
+        $matchLogic = $spot->mapper("App\MatchLogic")->findById($this->match_logic_id);
+        if ($matchLogic === false) {
+            return;
+        } else {
+            return $matchLogic->removeChildren($spot);
+        }
     }
 
     public function etag()

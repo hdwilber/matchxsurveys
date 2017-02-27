@@ -29,10 +29,7 @@ class OptionTransformer extends Fractal\TransformerAbstract
             "value" => (integer)$option->value? : null,
             "sort" => (integer)$option->sort?: -1,
             "author" => $option->author ? : null,
-            "question" => $option->question ?: null,
-            "links" => [
-                "self" => "/options/{$option->uid}"
-            ]
+            "question" => $option->question ?: null
         ];
     }
 }

@@ -67,23 +67,70 @@ class MatchLogic extends \Spot\Entity
     public function toString($spot) {
         
     }
-    public function buildHierarchy($spot) {
 
+    public function buildHierarchy($spot) {
+        if ($this->target_type == "match") {
+            $match = $spot->mapper("App\Match")->findById($this->target_id);
+            $ret =[];
+            array_push($ret, ['data' => ['type'=>'match', 'name'=>$match->toString($spot), 'bool'=> null, 'operator' => $match->operator, 'matchType' =>'single', 'uid'=>$match->uid] ]);
+            return $ret;
+        }
+        else {
+            return $this->_buildHierarchy($spot);
+        }
+    }
+    public function _buildHierarchy($spot) {
         if ($this->target_type == "match") {
             $match = $spot->mapper("App\Match")->findById($this->target_id);
             if ($match === false) {
-                return [null];
+                return [];
             } else {
-                return ['checked'=>false, 'expanded'=>false, 'data' => ['type'=>'match', 'name'=>$match->toString($spot), 'bool'=> null, 'operator' => $match->operator, 'matchType' =>'single', 'uid'=>$match->uid], 'children' => null];
+                return ['data' => ['type'=>'match', 'target_question_id' => $match->target_question_id, 'target_option_id' => $match->target_option_id, 'name'=>$match->toString($spot), 'bool'=> null, 'operator' => $match->operator, 'matchType' =>'single', 'uid'=>$match->uid] ];
             }
         } else {
             $mls = $spot->mapper("App\MatchLogic")->findAllFromParent($this);
-            //$ret = ['type' =>'match-logic', 'name'=>"Match Logic " .$match->uid, 'bool' => null];
             $ret = [];
             foreach($mls as $ml) {
-                array_push($ret, ['checked'=>false,'expanded' => true, 'data'=>['uid'=>$ml->uid, 'type' => "match-logic", 'name' => 'Match Logic', 'bool' => $ml->bool], 'children' => [$ml->buildHierarchy($spot)]]);
+                if ($ml->target_type != null)
+                    array_push($ret, ['checked'=>false,'expanded' => true, 'data'=>['uid'=>$ml->uid, 'type' => "match-logic", 'name' => 'Match Logic', 'bool' => $ml->bool], 'children' => [$ml->_buildHierarchy($spot)]]);
+                else 
+                    array_push($ret, ['checked'=>false,'expanded' => true, 'data'=>['uid'=>$ml->uid, 'type' => "match-logic", 'name' => 'Match Logic', 'bool' => $ml->bool], 'children'=>$ml->_buildHierarchy($spot)]);
+
             }
             return $ret;
+        }
+    }
+
+    public function removeChildren($spot) {
+        if ($this->target_type == "match") {
+            $match = $spot->mapper("App\Match")->findById($this->target_id);
+            if ($match === false) {
+                return;
+            } else {
+                $spot->mapper("App\Match")->delete($match);
+                return;
+            }
+        }
+        else {
+            $this->_removeChildren($spot);
+            return ;
+        }
+    }
+    public function _removeChildren($spot) {
+        if ($this->target_type == "match") {
+            $match = $spot->mapper("App\Match")->findById($this->target_id);
+            if ($match === false) {
+                return;
+            } else {
+                $spot->mapper("App\Match")->delete($match);
+            }
+        } else {
+            $mls = $spot->mapper("App\MatchLogic")->findAllFromParent($this);
+            foreach($mls as $ml ){
+                $ml->_removeChildren($spot);
+                $spot->mapper("App\MatchLogic")->delete($ml);
+            }
+            $spot->mapper("App\MatchLogic")->delete($this);
         }
     }
 
@@ -91,36 +138,42 @@ class MatchLogic extends \Spot\Entity
         if ($this->target_type == "match") {
             $match = $spot->mapper("App\Match")->findById($this->target_id);
             if ($match === false) {
-                return true;
+                return null;
             }
-            // When not found, it returns to false in order to continue valoration
+            // When not found, continue valoration
             $question = $spot->mapper("App\Question")->findById($match->target_question_id);
             if ($question === false) {
-                return true;
+                return null;
             }
-            $selection = $spot->mapper("App\Selection")->findByQuestion($tq, $question );
+            $selection = $spot->mapper("App\Selection")->findByQuestion($tq, $question);
             if ($selection === false) {
-                return true;
+                return null;
             }
 
             if ($match->operator == "eq") {
-                if ($selection->question_id == $match->target_question_id && $selection->option_id == $match->target_option_id)
+                //if ($selection->question_id == $match->target_question_id && $selection->option_id == $match->target_option_id)
+                if ($selection->option_id == $match->target_option_id)
                     return true;
                 else {
                     return false;
                 }
             }
-            return true;
+            return null;
         }
         else {
-            
             $mls = $spot->mapper("App\MatchLogic")->findAllFromParent($this);
-            $ret = true;
+            $ret = null;
             foreach($mls as $ml) {
-                if ($ml->bool == "and") 
-                    $ret = $ret && $ml->evaluate($spot, $tq);
-                else if ($ml->bool == "or")
-                    $ret = $ret || $ml->evaluate($spot, $tq);
+                $ev = $ml->evaluate($spot, $tq);
+                if ($ml->bool == "and") {
+                    $ret = $ret && $ev;
+                }
+                else if ($ml->bool == "or"){
+                    $ret = $ret || $ev;
+                }
+                else {
+                    $ret = $ev;
+                }
             }
             return $ret;
         }
