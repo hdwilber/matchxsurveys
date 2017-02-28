@@ -155,9 +155,9 @@ $app->post(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/selections", functi
                 $selection->data($auxbody);
                 $mapper->save($selection);
 
-
                 //Looking for next allowed question
                 $question = $question->findNext($this->spot, $takenQuiz);
+                $this->logger->addInfo("Looking for next question END", $question->toArray());
                 if ($question === false) 
                     $this->logger->addInfo("Question end reached. Look for next Step");
                 $selection2 = new Selection(['taken_quiz_id' => $takenQuiz->uid, 'question_id'=>$question->uid, 'user_id'=>$this->token->getUser(), 'prev_id'=>$selection->uid]);
