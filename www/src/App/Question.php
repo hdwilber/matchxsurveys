@@ -10,6 +10,8 @@ use Tuupola\Base62;
 use Ramsey\Uuid\Uuid;
 use Psr\Log\LogLevel;
 
+use Exception\NotFoundException;
+
 class Question extends \Spot\Entity
 {
     protected static $table = "questions";
@@ -56,11 +58,20 @@ class Question extends \Spot\Entity
 
 
     public function check($spot, $action, $tq) {
-        $ls = $spot->mapper('App\Logic')->where(['target_type'=>'question', 'target_id'=>$this->uid, 'action'=>$action])->first();
-        if ($ls === false)
-            return null;
-        else 
-            return $ls->evaluate($spot, $tq);
+        //$ls = $spot->mapper('App\Logic')->where(['target_type'=>'question', 'target_id'=>$this->uid, 'action'=>$action])->first();
+        //if ($ls === false)
+            //return null;
+        //else 
+            //return $ls->evaluate($spot, $tq);
+        $ls = $spot->mapper('App\Logic')->all()->where(['target_type'=>'question', 'target_id'=>$this->uid, 'action'=>$action]);
+            $ret = null;
+            foreach($ls as $l) {
+                $aux = $l->evaluate($spot, $tq);
+                if (isset($aux)) {
+                    $ret = $ret || $aux;
+                }
+            }
+            return $ret;
     }
     public function checkVisibility($spot, $tq) {
         $show = $this->check($spot, 'show', $tq);
@@ -103,7 +114,7 @@ class Question extends \Spot\Entity
                 $nextQuestion= $spot->mapper('App\Question')->findById($question->next_id);
                 while(!$nextQuestion->checkVisibility($spot, $tq)) {
                     if ($nextQuestion->next_id != null) {
-                        $nextQuestion = $spot->mapper('App\Question')->findById($nextQuestion);
+                        $nextQuestion = $spot->mapper('App\Question')->findById($nextQuestion->next_id);
                     } else {
                         $nextQuestion = false;
                         break;

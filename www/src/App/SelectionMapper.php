@@ -1,6 +1,7 @@
 <?php 
 namespace App\Mapper;
 use Spot\Mapper;
+use Spot\Entity\Collection;
 
 class SelectionMapper extends Mapper
 {
@@ -12,17 +13,31 @@ class SelectionMapper extends Mapper
     }
     public function findLastModifiedFromTakenQuiz($uid, $tq) {
         if (isset($tq->uid)) {
-            return $this->all()->where(['taken_quiz_id' =>$tq->uid, 'user_id' => $uid])->sort(['updated_at'=>"DESC"])->first();
+            return $this->where(['taken_quiz_id' =>$tq->uid, 'user_id' => $uid])->order(['updated_at'=>"DESC"])->first();
         } else {
             return false;
         }
     }
     public function findAllFromTakenQuiz($uid, $tq) {
         if (isset($tq->uid)) {
-            return $this->all()->where(['taken_quiz_id' =>$tq->uid, 'user_id' => $uid])->order(['updated_at'=>'DESC']);
+            return $this->all()->where(['taken_quiz_id' =>$tq->uid, 'user_id' => $uid])->order(['updated_at'=>'DESC'])->with(['question', 'option']);
         } else {
             return false;
         }
+    }
+
+    public function findAllSortedFromTakenQuiz($uid, $tq) {
+        $next = $this->where(['taken_quiz_id' => $tq->uid, 'user_id' => $uid, 'prev_id' => null])->with(['question', 'option'])->first();
+
+        $arr =[];
+        if ($next !== false) {
+            array_push($arr, $next);
+            while($next->next_id != null) {
+                $next = $this->where(['uid'=>$next->next_id])->with(['question', 'option'])->first();
+                array_push($arr, $next);
+            }
+        }
+        return new Collection($arr);
     }
 
 
@@ -35,10 +50,10 @@ class SelectionMapper extends Mapper
     }
 
     public function getLastModifiedFromTakenQuiz($uid, $quid) {
-        return $this->where(['taken_quiz_id'=>$quid, 'user_id'=> $uid])->sort(['updated_at'=>"DESC"])->first();
+        return $this->where(['taken_quiz_id'=>$quid, 'user_id'=> $uid])->order(['updated_at'=>"DESC"])->first();
     }
     public function getLastModified() {
-        return $this->where([])->sort(['updated_at'=>"DESC"])->first();
+        return $this->where([])->order(['updated_at'=>"DESC"])->first();
     }
     public function getById($uid) {
         return $this->where(['uid'=>$uid])->first();

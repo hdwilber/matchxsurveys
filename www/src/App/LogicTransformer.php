@@ -12,7 +12,8 @@ class LogicTransformer extends Fractal\TransformerAbstract
         return [
             "uid" => (string)$logic->uid ?: null,
             "action" => (string)$logic->action?: null,
-            "question_id" => $logic->question_id? : null,
+            "target_id" => $logic->target_id? : null,
+            "target_type" => $logic->target_type? : null,
             "match_logic_id" => $logic->match_logic_id ? : null
         ];
     }

@@ -97,7 +97,7 @@ $app->post(getenv("API_ROOT"). "/token", function ($request, $response, $argumen
     $data["result"] = TOKEN_GET_SUCCESSFULLY;
 
     $now = new DateTime();
-    $future = new DateTime("now +2 hours");
+    $future = new DateTime("now +12 hours");
 
     $jti = Base62::encode(random_bytes(16));
 

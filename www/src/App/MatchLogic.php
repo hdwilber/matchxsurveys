@@ -147,7 +147,7 @@ class MatchLogic extends \Spot\Entity
             }
             $selection = $spot->mapper("App\Selection")->findByQuestion($tq, $question);
             if ($selection === false) {
-                return null;
+                return false;
             }
 
             if ($match->operator == "eq") {

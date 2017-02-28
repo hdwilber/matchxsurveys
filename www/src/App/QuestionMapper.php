@@ -1,6 +1,8 @@
 <?php 
 namespace App\Mapper;
 use Spot\Mapper;
+use Spot\Entity;
+use Spot\Entity\Collection;
 
 class QuestionMapper extends Mapper
 {
@@ -20,6 +22,19 @@ class QuestionMapper extends Mapper
         } else {
             return false;
         }
+    }
+
+    public function findAllSortedFromStep($s) {
+        $next = $this->where(['uid'=>$s->start_id])->with(['options'])->first();;
+        $arr = [];
+        if ($next !== false) {
+            array_push($arr, $next);
+            while($next->next_id != null) {
+                $next = $this->where(['uid'=>$next->next_id])->with(['options'])->first();
+                array_push($arr, $next);
+            }
+        }
+        return new Collection($arr);
     }
 
     public function getById($uid)

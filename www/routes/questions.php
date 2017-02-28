@@ -39,7 +39,7 @@ $app->get(getenv("API_ROOT"). "/steps/{stepId}/questions", function ($request, $
             return $response->withStatus(304);
         }
 
-        $questions = $mapper->findAllFromStep($stepx);
+        $questions = $mapper->findAllSortedFromStep($step);
 
         /* Serialize the response data. */
         $fractal = new Manager();

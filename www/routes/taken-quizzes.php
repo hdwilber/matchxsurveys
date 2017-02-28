@@ -48,29 +48,17 @@ $app->get(getenv("API_ROOT"). "/taken-quizzes", function ($request, $response, $
     }
     $mapper = $this->spot->mapper("App\TakenQuiz");
 
-    $first = $mapper->findLastModifiedFromUser($this->token->getUser());
-    if ($first === false) {
-        throw new NotFoundException("TakenQuiz not found", 404);
-    } else {
-        $response = $this->cache->withEtag($response, $first->etag());
-        $response = $this->cache->withLastModified($response, $first->timestamp());
-        if ($this->cache->isNotModified($request, $response)) {
-            return $response->withStatus(304);
-        }
+    $tqs = $mapper->findAllFromUser($this->token->getUser());
 
-        $tqs = $mapper->findAllFromUser($this->token->getUser());
+    /* Serialize the response data. */
+    $fractal = new Manager();
+    $fractal->setSerializer(new DataArraySerializer);
+    $resource = new Collection($tqs, new TakenQuizTransformer);
+    $data = $fractal->createData($resource)->toArray();
 
-        /* Serialize the response data. */
-        $fractal = new Manager();
-        $fractal->setSerializer(new DataArraySerializer);
-        $resource = new Collection($tqs, new TakenQuizTransformer);
-        $data = $fractal->createData($resource)->toArray();
-
-        return $response->withStatus(200)
-            ->withHeader("Content-Type", "application/json")
-            ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-
-    }
+    return $response->withStatus(200)
+        ->withHeader("Content-Type", "application/json")
+        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 });
 
 $app->post(getenv("API_ROOT"). "/taken-quizzes", function ($request, $response, $arguments) {

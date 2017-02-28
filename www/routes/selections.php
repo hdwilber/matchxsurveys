@@ -58,7 +58,7 @@ $app->get(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/selections", functio
             return $response->withStatus(304);
         }
 
-        $selections = $mapper->findAllFromTakenQuiz($this->token->getUser(), $takenQuiz);
+        $selections = $mapper->findAllSortedFromTakenQuiz($this->token->getUser(), $takenQuiz);
 
         /* Serialize the response data. */
         $fractal = new Manager();

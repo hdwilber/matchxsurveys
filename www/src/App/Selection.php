@@ -74,8 +74,8 @@ class Selection extends \Spot\Entity
     {
         return [
             'author' => $mapper->belongsTo($entity, 'App\User', 'user_id'),
-            'option' => $mapper->hasOne($entity, 'App\Option', 'question_id'),
-            'question' => $mapper->hasOne($entity, 'App\Question', 'question_id')
+            'option' => $mapper->belongsTo($entity, 'App\Option', 'option_id'),
+            'question' => $mapper->belongsTo($entity, 'App\Question', 'question_id')
         ];
     }
 }

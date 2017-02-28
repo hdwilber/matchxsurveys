@@ -58,7 +58,7 @@ $container["token"] = function ($container) {
 $container["JwtAuthentication"] = function ($container) {
     return new JwtAuthentication([
         "path" => getenv("API_ROOT")."",
-        "passthrough" => [getenv("API_ROOT")."/token", getenv("API_ROOT")."/info"],
+        "passthrough" => [getenv("API_ROOT")."/token", getenv("API_ROOT")."/info", getenv("API_ROOT")."/register"],
         "secret" => getenv("JWT_SECRET"),
         "logger" => $container["logger"],
         "relaxed" => ["192.168.50.52"],

@@ -25,13 +25,9 @@ class SelectionTransformer extends Fractal\TransformerAbstract
     {
         return [
             "uid" => (string)$selection->uid ?: null,
-            "option" => $selection->options ? : null,
-            "author" => $selection->author ? : null,
-            "question" => $selection->logics ? : null,
+            "option" => $selection->option ? : null,
+            "question" => $selection->question ? : null,
             "value" => $selection->value ? : null,
-            "links" => [
-                "self" => "/selections/{$selection->uid}"
-            ]
         ];
     }
 }

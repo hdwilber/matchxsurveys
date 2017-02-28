@@ -77,8 +77,6 @@ $app->post(getenv("API_ROOT"). "/users", function ($request, $response, $argumen
     $data["status"] = "error";
     $data['data'] = [];
 
-
-    /* Check if token has needed scope. */
     if (false === $this->token->hasScope(["user.all", "user.create"])) {
         throw new ForbiddenException("Token not allowed to create Users.", 403);
     }
@@ -123,6 +121,55 @@ $app->post(getenv("API_ROOT"). "/users", function ($request, $response, $argumen
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
     return $response;
 });
+
+$app->post(getenv("API_ROOT"). "/register", function ($request, $response, $arguments) {
+
+    $mapper = $this->spot->mapper("App\User");
+    $data = [];
+    $data["status"] = "error";
+    $data['data'] = [];
+
+    $body = $request->getParsedBody();
+
+    if (strlen($body['email']) > 0) {
+        if (false === $user = $mapper->first (
+            ["email" => $body["email"]]
+        )) {
+            // There is not register user with the same email
+            $body['password'] = trim($body['password']);
+            if (strlen($body['password']) > 0 ){
+                $body['password'] = password_hash ($body['password'], PASSWORD_DEFAULT);
+                $user = new User($body);
+                $mapper->save($user);
+
+                /* Serialize the response data. */
+                $fractal = new Manager();
+                $fractal->setSerializer(new DataArraySerializer);
+                $resource = new Item($user, new UserTransformer);
+                $data = $fractal->createData($resource)->toArray();
+                $data["status"] = "ok";
+                $data["message"] = "New User created";
+            }
+            else {
+                $data['status'] = "error";
+                $data['message'] = "Password wrong";
+            }
+        }
+        else {
+            $data['status'] = "error";
+            $data['message'] = "This email is already registered.";
+        }
+    }
+    else {
+        $data['status'] = "error";
+        $data['message'] = "wrong Email.";
+    }
+    $response->withStatus(201)
+        ->withHeader("Content-Type", "application/json")
+        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+    return $response;
+});
+
 
 $app->get(getenv("API_ROOT"). "/users/{uid}", function ($request, $response, $arguments) {
 
