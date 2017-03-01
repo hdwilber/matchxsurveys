@@ -68,6 +68,7 @@ $container["JwtAuthentication"] = function ($container) {
             $data["message"] = $arguments["message"];
             return $response
                 ->withHeader("Content-Type", "application/json")
+                ->withHeader("Access-Control-Allow-Origin", "*")
                 ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
         },
         "callback" => function ($request, $response, $arguments) use ($container) {
@@ -82,7 +83,7 @@ $container["Cors"] = function ($container) {
         "origin" => ["10.0.0.9", "*"],
         "methods" => ["GET", "POST", "PUT", "PATCH", "DELETE"],
         "headers.allow" => ["Authorization", "If-Match", "If-Unmodified-Since", "Content-Type"],
-        "headers.expose" => ["Authorization", "Etag"],
+        "headers.expose" => ["Authorization", "Etag", "Access-Control-Allow-Origin"],
         "credentials" => true,
         "cache" => 60,
         "error" => function ($request, $response, $arguments) {
@@ -90,6 +91,7 @@ $container["Cors"] = function ($container) {
             $data["message"] = $arguments["message"];
             return $response
                 ->withHeader("Content-Type", "application/json")
+                ->withHeader("Access-Control-Allow-Origin", "*")
                 ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
         }
     ]);
@@ -105,6 +107,13 @@ $app->add("HttpBasicAuthentication");
 $app->add("JwtAuthentication");
 $app->add("Cors");
 $app->add("Negotiation");
+
+
+$app->add(function($request, $response, $next) {
+    $response = $next($request, $response);
+    return $response->withHeader("Access-Control-Allow-Origin", "*");
+});
+
 
 $container["cache"] = function ($container) {
     return new CacheUtil;
