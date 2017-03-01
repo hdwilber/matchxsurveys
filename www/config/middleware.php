@@ -109,10 +109,10 @@ $app->add("Cors");
 $app->add("Negotiation");
 
 
-$app->add(function($request, $response, $next) {
-    $response = $next($request, $response);
-    return $response->withHeader("Access-Control-Allow-Origin", "*");
-});
+//$app->add(function($request, $response, $next) {
+    //$response = $next($request, $response);
+    //return $response->withHeader("Access-Control-Allow-Origin", "*");
+//});
 
 
 $container["cache"] = function ($container) {
