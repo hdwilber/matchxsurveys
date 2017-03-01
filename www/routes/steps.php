@@ -127,7 +127,7 @@ $app->get(getenv("API_ROOT"). "/steps/{uid}", function ($request, $response, $ar
     }
     $mapper = $this->spot->mapper("App\Step");
 
-    if (false === $step = $mapper->getById($arguments["uid"])) {
+    if (false === $step = $mapper->findById($arguments["uid"])) {
         throw new NotFoundException("Step not found.", 404);
     };
 
