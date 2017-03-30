@@ -1,4 +1,5 @@
 *.swp
+*.swo
 www/vendor
 www/composer.lock
 www/public/mef
