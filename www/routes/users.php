@@ -15,7 +15,6 @@
 
 use App\User;
 use App\UserTransformer;
-use App\UserListTransformer;
 
 use Exception\NotFoundException;
 use Exception\ForbiddenException;
@@ -62,7 +61,7 @@ $app->get(getenv("API_ROOT"). "/users", function ($request, $response, $argument
     /* Serialize the response data. */
     $fractal = new Manager();
     $fractal->setSerializer(new DataArraySerializer);
-    $resource = new Collection($users, new UserListTransformer);
+    $resource = new Collection($users, new UserTransformer);
     $data = $fractal->createData($resource)->toArray();
 
     return $response->withStatus(200)
@@ -70,6 +69,29 @@ $app->get(getenv("API_ROOT"). "/users", function ($request, $response, $argument
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 });
 
+$app->get(getenv("API_ROOT"). "/users/{id}/confirm/{code}", function ($request, $response, $arguments) {
+    $mapper = $this->spot->mapper("App\User");
+    $user = $mapper->findById($arguments['id']);
+    if ($user === false) {
+        throw new NotFoundException("User not found", 404);
+    }
+
+    if ($user->confirm_code == $arguments['code']) {
+        $user->data(['confirm_code' => null, 'confirm_created_at' => null, 'confirmed' => true]);
+        $mapper->save($user);
+    } else {
+        throw new ForbiddenException("This code has already used", 403);
+    }
+    $fractal = new Manager();
+    $fractal->setSerializer(new DataArraySerializer);
+    $resource = new Item($user, new UserTransformer);
+    $data = $fractal->createData($resource)->toArray();
+
+    $response->withStatus(201)
+        ->withHeader("Content-Type", "application/json")
+        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+    return $response;
+});
 $app->post(getenv("API_ROOT"). "/users", function ($request, $response, $arguments) {
 
     $mapper = $this->spot->mapper("App\User");
@@ -91,6 +113,7 @@ $app->post(getenv("API_ROOT"). "/users", function ($request, $response, $argumen
             $body['password'] = trim($body['password']);
             if (strlen($body['password']) > 0 ){
                 $body['password'] = password_hash ($body['password'], PASSWORD_DEFAULT);
+
                 $user = new User($body);
                 $mapper->save($user);
 
@@ -171,7 +194,7 @@ $app->post(getenv("API_ROOT"). "/register", function ($request, $response, $argu
 });
 
 
-$app->get(getenv("API_ROOT"). "/users/{uid}", function ($request, $response, $arguments) {
+$app->get(getenv("API_ROOT"). "/users/{id}", function ($request, $response, $arguments) {
 
     $mapper = $this->spot->mapper("App\User");
     /* Check if token has needed scope. */
@@ -179,8 +202,8 @@ $app->get(getenv("API_ROOT"). "/users/{uid}", function ($request, $response, $ar
         throw new ForbiddenException("Token not allowed to list users.", 403);
     }
 
-    /* Load existing User using provided uid */
-    if (false === $user = $mapper->getById($arguments["uid"])) {
+    /* Load existing User using provided id */
+    if (false === $user = $mapper->getById($arguments["id"])) {
         throw new NotFoundException("User not found.", 404);
     };
 
@@ -206,7 +229,7 @@ $app->get(getenv("API_ROOT"). "/users/{uid}", function ($request, $response, $ar
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 });
 
-$app->patch(getenv("API_ROOT"). "/users/{uid}", function ($request, $response, $arguments) {
+$app->patch(getenv("API_ROOT"). "/users/{id}", function ($request, $response, $arguments) {
 
     $mapper = $this->spot->mapper("App\User");
     /* Check if token has needed scope. */
@@ -214,8 +237,8 @@ $app->patch(getenv("API_ROOT"). "/users/{uid}", function ($request, $response, $
         throw new ForbiddenException("Token not allowed to update users.", 403);
     }
 
-    /* Load existing user using provided uid */
-    if (false === $user = $mapper->getById($arguments["uid"])) {
+    /* Load existing user using provided id */
+    if (false === $user = $mapper->getById($arguments["id"])) {
         throw new NotFoundException("User not found.", 404);
     };
 
@@ -250,7 +273,7 @@ $app->patch(getenv("API_ROOT"). "/users/{uid}", function ($request, $response, $
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 });
 
-$app->put(getenv("API_ROOT"). "/users/{uid}", function ($request, $response, $arguments) {
+$app->put(getenv("API_ROOT"). "/users/{id}", function ($request, $response, $arguments) {
     $mapper = $this->spot->mapper("App\User");
 
     /* Check if token has needed scope. */
@@ -258,8 +281,8 @@ $app->put(getenv("API_ROOT"). "/users/{uid}", function ($request, $response, $ar
         throw new ForbiddenException("Token not allowed to update Users.", 403);
     }
 
-    /* Load existing user using provided uid */
-    if (false === $user = $mapper($arguments["uid"])) {
+    /* Load existing user using provided id */
+    if (false === $user = $mapper($arguments["id"])) {
         throw new NotFoundException("User not found.", 404);
     };
 
@@ -292,7 +315,7 @@ $app->put(getenv("API_ROOT"). "/users/{uid}", function ($request, $response, $ar
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 });
 
-$app->delete(getenv("API_ROOT"). "/users/{uid}", function ($request, $response, $arguments) {
+$app->delete(getenv("API_ROOT"). "/users/{id}", function ($request, $response, $arguments) {
 
     /* Check if token has needed scope. */
     if (false === $this->token->hasScope(["user.all", "user.delete"])) {
@@ -300,8 +323,8 @@ $app->delete(getenv("API_ROOT"). "/users/{uid}", function ($request, $response, 
     }
     $mapper = $this->spot->mapper("App\User");
 
-    /* Load existing todo using provided uid */
-    if (false === $user= $mapper->getById($arguments["uid"])) {
+    /* Load existing todo using provided id */
+    if (false === $user= $mapper->getById($arguments["id"])) {
         throw new NotFoundException("User not found.", 404);
     };
 

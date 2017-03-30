@@ -6,17 +6,15 @@ use League\Fractal;
 
 class QuestionTransformer extends Fractal\TransformerAbstract
 {
-    public function transform(Question $question)
+    public function transform(Element $e)
     {
         return [
-            "uid" => (string)$question->uid ?: null,
-            "text" => (string)$question->text ?: null,
-            "code" => (string)$question->code ? : null,
-            "type" => (string)$question-> type ? : null,
-            "step_id" => (string)$question->step_id ? : null,
-            "next_id" => (string)$question->next_id? : null,
-            "mandatory" => (string)$question->mandatory ? : null,
-            "options" => $question->options ? : null,
+            "id" => (int)$e->id ?: null,
+            "code" => (string)$e->code ? : null,
+            "label" => ['type'=>'text', 'data'=>(string)$e->label->data?: null],
+            "type" => (string)$e->owned->type ? : null,
+            "subType" => (string)$e->owned->sub_type? : null,
+            //"options" => $question->options ? : null,
         ];
     }
 }

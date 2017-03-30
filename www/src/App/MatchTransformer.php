@@ -21,17 +21,15 @@ use League\Fractal;
 class MatchTransformer extends Fractal\TransformerAbstract
 {
 
-    public function transform(Match $match)
+    public function transform(Element $e)
     {
         return [
-            "uid" => (string)$match->uid ?: null,
-            "question_id" => $match->question_id ?: null,
-            "operator" => (string)$match->operator? : null,
-            "target_question_id" => $match->target_question_id? : null,
-            "target_option_id" => $match->target_option_id? : null,
-            "target_value" => $match->target_value ?: null,
-            "user_id" => $match->user_id?: null,
-            "type" => $match->type ?: null
+            "id" => (int)$e->id ?: null,
+            "type" => "match",
+            "operator" => (string)$e->owned->operator ? : null,
+            "targetId" => (int)$e->owned->target_id ? : null,
+            "targetOptionId" => (int)$e->owned->target_option_id? : null,
+            "targetValue" => $e->owned->target_value ?: null
         ];
     }
 }

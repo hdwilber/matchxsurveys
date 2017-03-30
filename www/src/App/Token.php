@@ -17,6 +17,6 @@ class Token
     }
 
     public function getUser() {
-        return $this->decoded->uid;
+        return $this->decoded->id;
     }
 }

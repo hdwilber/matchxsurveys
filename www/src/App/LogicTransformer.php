@@ -1,20 +1,35 @@
 <?php
 namespace App;
 
-use App\Logic;
+use App\Step;
+use App\Element;
 use League\Fractal;
+use App\QuestionTransformer;
+use League\Fractal\Manager;
+use League\Fractal\Resource\Item;
+use League\Fractal\Resource\Collection;
+use League\Fractal\Serializer\DataArraySerializer;
+
 
 class LogicTransformer extends Fractal\TransformerAbstract
 {
 
-    public function transform(Logic $logic)
+    public function transform(Element $e)
     {
         return [
-            "uid" => (string)$logic->uid ?: null,
-            "action" => (string)$logic->action?: null,
-            "target_id" => $logic->target_id? : null,
-            "target_type" => $logic->target_type? : null,
-            "match_logic_id" => $logic->match_logic_id ? : null
+            "id" => (int)$e->id ?: null,
+            "code"=> (string)$e->code ? : null,
+            "action" => (string)$e->owned->action?: null,
+            "type" => "logic",
+            "questionary" => [ 
+                'id' => $e->owned->questionary_id,
+                'code' => $e->owned->questionary->code,
+                'label'  => [
+                    'type' => "text",
+                    "data" => (string)$e->owned->questionary->label->data
+                ]
+            ]
         ];
     }
 }
+

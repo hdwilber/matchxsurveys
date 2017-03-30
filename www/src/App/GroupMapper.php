@@ -4,11 +4,11 @@ use Spot\Mapper;
 use Spot\Entity;
 use Spot\Entity\Collection;
 
-class QuestionMapper extends ElementMapper
+class GroupMapper extends ElementMapper
 {
-    public function listFromGroup($g) {
-        $start = $this->getMapper('App\Element')->findById($g->owned->start_id);
-        return $this->getMapper('App\Element')->listFrom($start);
+    public function listFromQuestionary($q) {
+        $g = $this->findById($q->group_id);
+        return $this->listFrom($g);
     }
     //public function findLastModifiedFromStep($step) {
         //return $this->where(['step_id' => $step['uid']])->order(['updated_at'=>"DESC"])->first();

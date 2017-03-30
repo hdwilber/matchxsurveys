@@ -18,19 +18,22 @@ class User extends \Spot\Entity
     public static function fields() {
         return [
             "id" => ["type" => "integer", "unsigned" => true, "autoincrement" => true],
-            "uid" => ["type" => "string", "length" => 50, "unique" => true, "primary" => true],
             "email" => ["type" => "string", "length" => 100, "unique" => true],
-            "password" => ["type" => "string", "length" => 255 ],
-            "type" => ["type" => "string", "length" => "100"],
+            "name" => ["type" => "string", "length" => 100],
+            "password" => ["type" => "string", "length" => 255],
+            "type" => ["type" => "string", "length" => 100],
+            "confirmed" => ["type" => "boolean", "value"=> false],
+            "confirm_code" => ["type" => "boolean", "value"=> false],
+            "confirm_created_at" => ["type" => "datetime", "value" => new \DateTime()],
             "created_at"   => ["type" => "datetime", "value" => new \DateTime()],
-            "updated_at"   => ["type" => "datetime", "value" => new \DateTime()],
-            "confirmed" => ["type" => "boolean", "value"=> false]
+            "updated_at"   => ["type" => "datetime", "value" => new \DateTime()]
         ];
     }
 
     public static function events(EventEmitter $emitter) {
         $emitter->on("beforeInsert", function (EntityInterface $entity, MapperInterface $mapper) {
-            $entity->uid = Base62::encode(random_bytes(16));
+            //$entity->uid = Base62::encode(random_bytes(16));
+            $entity->confirm_code = Base62::encode(random_bytes(32));
         });
 
         $emitter->on("beforeUpdate", function (EntityInterface $entity, MapperInterface $mapper) {
@@ -48,7 +51,7 @@ class User extends \Spot\Entity
     
     public function etag()
     {
-        return md5($this->uid . $this->timestamp());
+        return md5($this->id . $this->timestamp());
     }
 
     public function clear()
@@ -62,6 +65,7 @@ class User extends \Spot\Entity
     public static function relations(MapperInterface $mapper, EntityInterface $entity)
     {
         return [
+
         ];
     }
 }

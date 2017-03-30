@@ -10,19 +10,21 @@ use Tuupola\Base62;
 use Ramsey\Uuid\Uuid;
 use Psr\Log\LogLevel;
 
-class TakenQuiz extends \Spot\Entity
+class Answer extends \Spot\Entity
 {
-    protected static $table = "taken_quizzes";
-    protected static $mapper = "App\Mapper\TakenQuizMapper";
+    protected static $table = "answers";
+    protected static $mapper = "App\Mapper\AnswerMapper";
 
     public static function fields()
     {
         return [
             "id" => ["type" => "integer", "unsigned" => true, "autoincrement" => true],
-            "questionary_id" => ["type" => "integer"],
-            "first_id" => ['type' => 'integer'],
-            "last_id" => ['type' => 'integer'],
-            "element_id" => ['type' => 'integer']
+            "question_id" => ["type" => "integer"],
+            "option_id" => ["type" => "integer"],
+            "value" => ["type" => "integer"],
+            "data" => ["type" => "string"],
+            "valid" => ["type" => "boolean", "vaue" => false],
+            "element_id" => ["type" => "integer"]
         ];
     }
 
@@ -34,11 +36,11 @@ class TakenQuiz extends \Spot\Entity
         $emitter->on("beforeUpdate", function (EntityInterface $entity, MapperInterface $mapper) {
         });
     }
-
     public static function relations(MapperInterface $mapper, EntityInterface $entity)
     {
         return [
-            "questionary" => $mapper->belongsTo($entity, "App\\Element", "questionary_id")
+            'option' => $mapper->belongsTo($entity, 'App\Element', 'option_id'),
+            'question' => $mapper->belongsTo($entity, 'App\Element', 'question_id')
         ];
     }
 }

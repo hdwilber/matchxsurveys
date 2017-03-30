@@ -12,66 +12,27 @@ use Psr\Log\LogLevel;
 
 use Exception\NotFoundException;
 
-use App\Option;
-use App\Element;
-
-class Option extends \Spot\Entity
+class Group extends \Spot\Entity
 {
-    protected static $table = "options";
-    protected static $mapper = "App\Mapper\OptionMapper";
+    protected static $table = "groups";
+    protected static $mapper = "App\Mapper\GroupMapper";
 
     public static function fields()
     {
-        return [ 
+        return [
             "id" => ["type" => "integer", "unsigned" => true, "autoincrement" => true, "primary"=>true],
-            "type" => ["type" => "string"],
-            "value" => ["type" => "integer"],
-            "data" => ["type" => "string"],
-            "extra" => ["type" => "string"],
+            "start_id" => ["type" => "integer"],
             "element_id" => ["type" => "integer"]
         ];
     }
 
     public static function events(EventEmitter $emitter)
     {
+        parent::events($emitter);
         $emitter->on("beforeInsert", function (EntityInterface $entity, MapperInterface $mapper) {
             //$entity->uid = Base62::encode(random_bytes(16));
         });
-
-        $emitter->on("beforeUpdate", function (EntityInterface $entity, MapperInterface $mapper) {
-            //$entity->updated_at = new \DateTime();
-        });
-
-        $emitter->on("beforeDelete", function (EntityInterface $entity, MapperInterface $mapper) {
-        });
     }
-
-    public function check($spot, $action, $tq) {
-        //$ls = $spot->mapper('App\Logic')->all()->where(['target_type'=>'question', 'target_id'=>$this->uid, 'action'=>$action]);
-            //$ret = null;
-            //foreach($ls as $l) {
-                //$aux = $l->evaluate($spot, $tq);
-                //if (isset($aux)) {
-                    //$ret = $ret || $aux;
-                //}
-            //}
-            //return $ret;
-    }
-    public function checkVisibility($spot, $tq) {
-        //$show = $this->check($spot, 'show', $tq);
-        //$hide = $this->check($spot, 'hide', $tq);
-
-        //if (!isset($hide) && !isset($show)) {
-            //return true;
-        //}
-        //if (isset($hide)) {
-            //return !$hide;
-        //}
-        //else if(isset($show)){
-            //return $show;
-        //}
-    }
-
 
     public function findNext($spot, $tq) {
         //if ($this->next_id == null) {
@@ -128,13 +89,15 @@ class Option extends \Spot\Entity
     public function clear()
     {
         $this->data([
+            "code" => null,
         ]);
     }
 
     public static function relations(MapperInterface $mapper, EntityInterface $entity)
     {
         return [
-            'options' => $mapper->hasMany($entity, 'App\Option', 'question_id', $entity->localKey)
+            'label' => $mapper->belongsTo($entity, 'App\Label', 'label_id')
+            //'options' => $mapper->hasMany($entity, 'App\Option', 'question_id', $entity->localKey),
             //'logics' => $mapper->hasMany($entity, 'App\Logic', 'question_id', $entity->localKey)
         ];
     }

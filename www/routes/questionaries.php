@@ -1,5 +1,6 @@
 <?php
 use App\Questionary;
+use App\Element;
 use App\QuestionaryTransformer;
 
 use Exception\NotFoundException;
@@ -19,22 +20,40 @@ $app->get(getenv("API_ROOT"). "/questionaries", function ($request, $response, $
         throw new ForbiddenException("Token not allowed to list questionaries.", 403);
     }
 
-    $mapper = $this->spot->mapper("App\Questionary");
-    $first = $mapper->findLastModified();
-    if ($first) {
-        $response = $this->cache->withEtag($response, $first->etag());
-        $response = $this->cache->withLastModified($response, $first->timestamp());
-    }
+    $mapper = $this->spot->mapper("App\Element");
 
-    if ($this->cache->isNotModified($request, $response)) {
-        return $response->withStatus(304);
-    }
-    $questionaries = $mapper->findAll();
+    $questionaries = $mapper->findAllByType('questionary', ['owned', 'children']);
 
     /* Serialize the response data. */
     $fractal = new Manager();
     $fractal->setSerializer(new DataArraySerializer);
     $resource = new Collection($questionaries, new QuestionaryTransformer);
+    $data = $fractal->createData($resource)->toArray();
+    //$data['child'] = $paMapper->findById($questionaries[0]->owned->group_id, ['children']);
+
+    return $response->withStatus(200)
+        ->withHeader("Content-Type", "application/json")
+        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+});
+
+$app->get(getenv("API_ROOT"). "/questionaries/{id}", function ($request, $response, $arguments) {
+
+    /* Check if token has needed scope. */
+    if (false === $this->token->hasScope(["question.all", "question.list"])) {
+        throw new ForbiddenException("Token not allowed to list questionaries.", 403);
+    }
+
+    $mapper = $this->spot->mapper("App\Element");
+    $questionary = $mapper->findById($arguments['id'], ['owned', 'children']);
+
+    if ($questionary === false) {
+        throw new  NotFoundException("Questionary not found", 404);
+    }
+
+    /* Serialize the response data. */
+    $fractal = new Manager();
+    $fractal->setSerializer(new DataArraySerializer);
+    $resource = new Item($questionary, new QuestionaryTransformer);
     $data = $fractal->createData($resource)->toArray();
 
     return $response->withStatus(200)
@@ -48,21 +67,27 @@ $app->post(getenv("API_ROOT"). "/questionaries", function ($request, $response, 
         throw new ForbiddenException("Token not allowed to create questionaries.", 403);
     }
 
-    $mapper = $this->spot->mapper("App\Questionary");
+    $mapper = $this->spot->mapper("App\Element");
     $body = $request->getParsedBody();
-    $body["user_id"] = $this->token->getUser();
 
-    $questionary = new Questionary($body);
-    $mapper->save($questionary);
+    $element = new Element ( [
+        'data_type' => 'questionary',
+        'user_id' => $this->token->getUser(),
+        'code' => $body['code'],
+    ]);
+
+    $mapper->save($element);
+    $element->createLabel($mapper, "text", $body['label']);
+    $questionary = $element->createData($mapper, []);
 
     /* Add Last-Modified and ETag headers to response. */
-    $response = $this->cache->withEtag($response, $questionary->etag());
-    $response = $this->cache->withLastModified($response, $questionary->timestamp());
+    $response = $this->cache->withEtag($response, $element->etag());
+    $response = $this->cache->withLastModified($response, $element->timestamp());
 
     /* Serialize the response data. */
     $fractal = new Manager();
     $fractal->setSerializer(new DataArraySerializer);
-    $resource = new Item($questionary, new QuestionaryTransformer);
+    $resource = new Item($element, new QuestionaryTransformer);
     $data = $fractal->createData($resource)->toArray();
     $data["status"] = "ok";
     $data["message"] = "New questionary created";
@@ -72,55 +97,17 @@ $app->post(getenv("API_ROOT"). "/questionaries", function ($request, $response, 
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 });
 
-$app->get(getenv("API_ROOT"). "/questionaries/{uid}", function ($request, $response, $arguments) {
-
-    /* Check if token has needed scope. */
-    if (false === $this->token->hasScope(["question.all", "question.read"])) {
-        throw new ForbiddenException("Token not allowed to read questionaries.", 403);
-    }
-    $mapper = $this->spot->mapper("App\Questionary");
-
-    if (false === $questionary = $mapper->findById($arguments["uid"]))
-    {
-        throw new NotFoundException("Questionary not found.", 404);
-    };
-
-    /* Add Last-Modified and ETag headers to response. */
-    $response = $this->cache->withEtag($response, $questionary->etag());
-    $response = $this->cache->withLastModified($response, $questionary->timestamp());
-
-    /* If-Modified-Since and If-None-Match request header handling. */
-    /* Heads up! Apache removes previously set Last-Modified header */
-    /* from 304 Not Modified responses. */
-    if ($this->cache->isNotModified($request, $response)) {
-        return $response->withStatus(304);
-    }
-
-
-    $questionary->steps = $this->spot->mapper("App\Step")->findAllSortedFromQuestionary($questionary);
-
-    /* Serialize the response data. */
-    $fractal = new Manager();
-    $fractal->setSerializer(new DataArraySerializer);
-    $resource = new Item($questionary, new QuestionaryTransformer);
-    $data = $fractal->createData($resource)->toArray();
-
-    return $response->withStatus(200)
-        ->withHeader("Content-Type", "application/json")
-        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-});
-
-$app->patch(getenv("API_ROOT"). "/questionary/{uid}", function ($request, $response, $arguments) {
+$app->patch(getenv("API_ROOT"). "/questionaries/{id}", function ($request, $response, $arguments) {
 
     /* Check if token has needed scope. */
     if (false === $this->token->hasScope(["question.all", "question.update"])) {
-        throw new ForbiddenException("Token not allowed to update questionaries.", 403);
+        throw new ForbiddenException("Token not allowed to update Questionarties.", 403);
     }
 
-    $mapper = $this->spot->mapper("App\Questionary");
+    $mapper = $this->spot->mapper("App\Element");
     /* Load existing question using provided uid */
-    if (false === $questionary = $mapper->getById($arguments["uid"])){
-        throw new NotFoundException("Questionary not found.", 404);
+    if (false === $element = $mapper->getById($arguments["id"])){
+        throw new NotFoundException("TakenQuiz not found.", 404);
     };
 
     /* PATCH requires If-Unmodified-Since or If-Match request header to be present. */
@@ -130,92 +117,48 @@ $app->patch(getenv("API_ROOT"). "/questionary/{uid}", function ($request, $respo
 
     /* If-Unmodified-Since and If-Match request header handling. If in the meanwhile  */
     /* someone has modified the question respond with 412 Precondition Failed. */
-    if (false === $this->cache->hasCurrentState($request, $questionary->etag(), $questionary->timestamp())) {
-        throw new PreconditionFailedException("Questionary has been modified.", 412);
+    if (false === $this->cache->hasCurrentState($request, $tq->etag(), $tq->timestamp())) {
+        throw new PreconditionFailedException("Taken Quiz has been modified.", 412);
     }
 
     $body = $request->getParsedBody();
-    $questionary->data($body);
-    $mapper->save($questionary);
+    if (isset($body['label'])) {
+        $mapper->changeLabelText($element, $body['label']);
+    }
+    if (isset($body['code'])){
+        $element->data(['code' => $body['code']]);
+        $mapper->save($element);
+    }
 
-    /* Add Last-Modified and ETag headers to response. */
-    $response = $this->cache->withEtag($response, $questionary->etag());
-    $response = $this->cache->withLastModified($response, $questionary->timestamp());
+    $response = $this->cache->withEtag($response, $element->etag());
+    $response = $this->cache->withLastModified($response, $element->timestamp());
 
     $fractal = new Manager();
     $fractal->setSerializer(new DataArraySerializer);
-    $resource = new Item($questionary, new QuestionaryTransformer);
+    $resource = new Item($element, new QuestionaryTransformer);
     $data = $fractal->createData($resource)->toArray();
     $data["status"] = "ok";
-    $data["message"] = "Questionary updated";
+    $data["message"] = "Questionary has been updated";
 
-    return $response->withStatus(200)
+    return $response->withStatus(201)
         ->withHeader("Content-Type", "application/json")
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+
 });
 
-$app->put(getenv("API_ROOT"). "/questionaries/{uid}", function ($request, $response, $arguments) {
-
-    /* Check if token has needed scope. */
-    if (false === $this->token->hasScope(["question.all", "question.update"])) {
-        throw new ForbiddenException("Token not allowed to update questionary.", 403);
-    }
-    $mapper = $this->spot->mapper("App\Questionary");
-
-    /* Load existing question using provided uid */
-    if (false === $questionary = $mapper->getById($arguments["uid"])) {
-        throw new NotFoundException("Questionary not found.", 404);
-    };
-
-    /* PUT requires If-Unmodified-Since or If-Match request header to be present. */
-    if (false === $this->cache->hasStateValidator($request)) {
-        throw new PreconditionRequiredException("PUT request is required to be conditional.", 428);
-    }
-
-    /* If-Unmodified-Since and If-Match request header handling. If in the meanwhile  */
-    /* someone has modified the question respond with 412 Precondition Failed. */
-    if (false === $this->cache->hasCurrentState($request, $questionary->etag(), $questionary->timestamp())) {
-        throw new PreconditionFailedException("Questionary has been modified.", 412);
-    }
-
-    $body = $request->getParsedBody();
-
-    /* PUT request assumes full representation. If any of the properties is */
-    /* missing set them to default values by clearing the question object first. */
-    $questionary->clear();
-    $questionary->data($body);
-    $mapper->save($questionary);
-
-    /* Add Last-Modified and ETag headers to response. */
-    $response = $this->cache->withEtag($response, $questionary->etag());
-    $response = $this->cache->withLastModified($response, $questionary->timestamp());
-
-    $fractal = new Manager();
-    $fractal->setSerializer(new DataArraySerializer);
-    $resource = new Item($questionary, new QuestionaryTransformer);
-    $data = $fractal->createData($resource)->toArray();
-    $data["status"] = "ok";
-    $data["message"] = "Questionary updated";
-
-    return $response->withStatus(200)
-        ->withHeader("Content-Type", "application/json")
-        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-});
-
-$app->delete(getenv("API_ROOT"). "/questionaries/{uid}", function ($request, $response, $arguments) {
-
+$app->delete(getenv("API_ROOT"). "/questionaries/{id}", function ($request, $response, $arguments) {
     /* Check if token has needed scope. */
     if (false === $this->token->hasScope(["question.all", "question.delete"])) {
-        throw new ForbiddenException("Token not allowed to delete questionaries.", 403);
+        throw new ForbiddenException("Token not allowed to delete questions.", 403);
     }
-    $mapper = $this->spot->mapper("App\Questionary");
+    $mapper = $this->spot->mapper("App\Element");
 
-    /* Load existing wquestion using provided uid */
-    if (false === $questionary = $mapper->getById($arguments["uid"])) {
+    /* Load existing wquestion using provided id */
+    if (false === $element = $mapper->findById($arguments["id"])) {
         throw new NotFoundException("Questionary not found.", 404);
     };
 
-    $mapper->delete($questionary);
+    $mapper->deleteAll($element);
 
     $data["status"] = "ok";
     $data["message"] = "Questionary deleted";
@@ -223,4 +166,5 @@ $app->delete(getenv("API_ROOT"). "/questionaries/{uid}", function ($request, $re
     return $response->withStatus(200)
         ->withHeader("Content-Type", "application/json")
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+
 });

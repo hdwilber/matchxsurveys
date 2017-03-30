@@ -52,14 +52,14 @@ $app->post(getenv("API_ROOT"). "/token", function ($request, $response, $argumen
     $data["status"] = "error";
     $data["result"] = TOKEN_GET_FAILED;
     $data["error"] = TOKEN_GET_ERR_NONE;
-    $data["uid"] = "";
+    $data["id"] = "";
     $data["email"] = "";
 
     //print_r($requested_scope);
     $scope = [];
     $server = $request->getServerParams();
     $payload = [];
-    $payload["uid"] = "";
+    $payload["id"] = "";
     $payload["email"] = "";
     $user = $this->spot->mapper("App\User")->first (["email" => $server["PHP_AUTH_USER"]]);
     if ($user != NULL) {
@@ -75,7 +75,7 @@ $app->post(getenv("API_ROOT"). "/token", function ($request, $response, $argumen
                 $scope = array_merge($scope, scope_fill("question", ["R", "L"]));
                 $scope = array_merge($scope, scope_fill("option", ["A"]));
             }
-            $payload["uid"] = $user->uid;
+            $payload["id"] = $user->id;
             $payload["email"] = $user->email;
             $data["error"] = TOKEN_GET_ERR_NONE;
         } else {
@@ -111,8 +111,8 @@ $app->post(getenv("API_ROOT"). "/token", function ($request, $response, $argumen
     $data["status"] = "ok";
     $data["token"] = $token;
     $data["scope"] = $scope;
-    if ($payload["uid"] != "")
-        $data["uid"] = $payload["uid"];
+    if ($payload["id"] != "")
+        $data["id"] = $payload["id"];
     if ($payload["email"] != "")
         $data["email"] = $payload["email"];
 

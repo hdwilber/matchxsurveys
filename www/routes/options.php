@@ -1,8 +1,9 @@
 <?php
 use App\Option;
-use App\OptionTransformer;
 use App\Question;
+use App\Element;
 use App\QuestionTransformer;
+use App\OptionTransformer;
 
 use Exception\NotFoundException;
 use Exception\ForbiddenException;
@@ -14,30 +15,18 @@ use League\Fractal\Resource\Item;
 use League\Fractal\Resource\Collection;
 use League\Fractal\Serializer\DataArraySerializer;
 
-$app->get(getenv("API_ROOT"). "/questions/{questionId}/options", function ($request, $response, $arguments) {
+$app->get(getenv("API_ROOT"). "/questions/{id}/options", function ($request, $response, $arguments) {
+    if (false === $this->token->hasScope(["question.all", "question.read"])) {
+        throw new ForbiddenException("Token not allowed to read options.", 403);
+    }
+    $mapper = $this->spot->mapper("App\Element");
 
-    /* Check if token has needed scope. */
-    if (false === $this->token->hasScope(["option.all", "question.all", "question.list"])) {
-        throw new ForbiddenException("Token not allowed to list options.", 403);
+    if (false === $question = $mapper->findById($arguments["id"], ['owned', 'children'])){
+        throw new NotFoundException("Question not found.", 404);
     }
 
-    $first = $this->spot->mapper("App\Option")
-        ->listOptions($arguments['questionId'])->first();
-    if ($first) {
-        $response = $this->cache->withEtag($response, $first->etag());
-        $response = $this->cache->withLastModified($response, $first->timestamp());
-    }
+    $options = $mapper->getMapper('App\Option')->listFromQuestion($question);
 
-    if ($this->cache->isNotModified($request, $response)) {
-        return $response->withStatus(304);
-    }
-
-    $options = $this->spot->mapper("App\Option")
-        ->all()
-        ->where(['question_id' => $arguments["questionId"]])
-        ->order(["sort" => "DESC"]);
-
-    /* Serialize the response data. */
     $fractal = new Manager();
     $fractal->setSerializer(new DataArraySerializer);
     $resource = new Collection($options, new OptionTransformer);
@@ -48,186 +37,162 @@ $app->get(getenv("API_ROOT"). "/questions/{questionId}/options", function ($requ
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 });
 
-$app->post(getenv("API_ROOT"). "/questions/{questionId}/options", function ($request, $response, $arguments) {
+$app->post(getenv("API_ROOT"). "/questions/{id}/options/append", function ($request, $response, $arguments) {
 
     if (false === $this->token->hasScope(["question.all", "question.create"])) {
         throw new ForbiddenException("Token not allowed to create options.", 403);
     }
 
-    $mapper = $this->spot->mapper("App\Option");
-    $quMapper = $this->spot->mapper("App\Question");
-
-    $question = $quMapper->findById($arguments["questionId"]);
+    $mapper = $this->spot->mapper("App\Element");
+    $question = $mapper->findById($arguments['id'], ['owned', 'children']);
     if ($question === false) {
         throw new NotFoundException("Question not found", 404);
     }
-    $questionx = $question->toArray();
+
     $body = $request->getParsedBody();
-    $body["user_id"] = $this->token->getUser();
-    $body["question_id"] = $questionx["uid"];
-    $body['sort'] = (integer)($mapper->countFromQuestion($questionx)) + 1;
+    $data = [];
 
-    $option = new Option($body);
-    $mapper->save($option);
+    $type = $question->owned->type;
+    if ($type == "selection") {
+        $sub_type = $question->owned->sub_type;
+        if ($sub_type == "simple") {
+            $new = new Element([
+                'data_type' => 'option',
+                'user_id' => $this->token->getUser(),
+                'code' => (isset($body['code']) ? $body['code'] : null),
+                'parent_id' => $question->id
+            ]);
+            $mapper->save($new);
+            $new->createLabel($mapper, "text", $body['label']);
 
-    /* Add Last-Modified and ETag headers to response. */
-    $response = $this->cache->withEtag($response, $option->etag());
-    $response = $this->cache->withLastModified($response, $option->timestamp());
+            $option = $new->createData($mapper, [
+                'type' => $body['type'],
+                'value' => (isset($body['value'])? $body['value'] : null),
+                'data' => (isset($body['data'])? $body['data'] : null),
+                'extra' => (isset($body['extra'])? $body['extra'] : null),
+            ]);
+            if ($question->children->count() == 0) {
+                $question->saveData($mapper, ['start_id' => $new->id]);
+            } else {
+                $start = $mapper->findById($question->owned->start_id);
+                $mapper->append($start, $new);
+            }
 
-    /* Serialize the response data. */
-    $fractal = new Manager();
-    $fractal->setSerializer(new DataArraySerializer);
-    $resource = new Item($option, new OptionTransformer);
-    $data = $fractal->createData($resource)->toArray();
-    $data["status"] = "ok";
-    $data["message"] = "New option created";
+            /* Serialize the response data. */
+            $fractal = new Manager();
+            $fractal->setSerializer(new DataArraySerializer);
+            $resource = new Item($new, new OptionTransformer);
+            $data = $fractal->createData($resource)->toArray();
+            $data["status"] = "ok";
+            $data["message"] = "New option created";
+        } else if ($sub_type == "level") {
+            $st = isset($body['type'])? $body['type'] : null;
+            $children = $question->children->entities();
+
+            if ($st != null) {
+                $exists = false;
+                foreach($children as $child) {
+                    if ($st == $child->code) {
+                        $exists = true;
+                    }
+                }
+                if (($st == "min" || $st == "max") && !$exists) {
+                    $new = new Element([
+                        'data_type' => 'option',
+                        'user_id' => $this->token->getUser(),
+                        'code' => $st,
+                        'parent_id' => $question->id
+                    ]);
+                    $mapper->save($new);
+                    //$new ->createLabel($mapper, "text", ($st == "min") ? "Minimum" : "Maximum");
+                    $new->createLabel($mapper, "text", isset($body['label']) ? $body['label'] : ($st == "min" ? "Minimum":"Maximum"));
+                    $option = $new->createData($mapper, [
+                        'type' => $st,
+                        'value' => (isset($body['value'])? $body['value'] : null),
+                        'data' => (isset($body['data'])? $body['data'] : null),
+                        'extra' => (isset($body['extra'])? $body['extra'] : null),
+                    ]);
+                    if ($question->children->count() == 0) {
+                        $question->saveData($mapper, ['start_id' => $new->id]);
+                    }
+                    else {
+                        $mapper->append($mapper->findById($question->owned->start_id), $new);
+                    }
+                    $fractal = new Manager();
+                    $fractal->setSerializer(new DataArraySerializer);
+                    $resource = new Item($new, new OptionTransformer);
+                    $data = $fractal->createData($resource)->toArray();
+                    $data["status"] = "ok";
+                    $data["message"] = "New option " . $st . " created";
+                }
+            }
+        }
+    } else if ($type == "input") {
+        $sub_type = $question->owned->sub_type;
+        if ($sub_type == "text") {
+            $new = new Element([
+                'data_type' => 'option',
+                'user_id' => $this->token->getUser(),
+                'code' => (isset($body['code']) ? $body['code'] : null),
+                'parent_id' => $question->id
+            ]);
+            $mapper->save($new);
+            $new->createLabel($mapper, "text", $body['label']);
+
+            $option = $new->createData($mapper, [
+                'type' => $body['type'],
+                'value' => (isset($body['value'])? $body['value'] : null),
+                'data' => (isset($body['data'])? $body['data'] : null),
+                'extra' => (isset($body['extra'])? $body['extra'] : null),
+            ]);
+            if ($question->children->count() == 0) {
+                $question->saveData($mapper, ['start_id' => $new->id]);
+            } else {
+                $start = $mapper->findById($question->owned->start_id);
+                $mapper->append($start, $new);
+            }
+
+            /* Serialize the response data. */
+            $fractal = new Manager();
+            $fractal->setSerializer(new DataArraySerializer);
+            $resource = new Item($new, new OptionTransformer);
+            $data = $fractal->createData($resource)->toArray();
+            $data["status"] = "ok";
+            $data["message"] = "New option created";
+        } 
+
+    }
     return $response->withStatus(201)
         ->withHeader("Content-Type", "application/json")
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 });
 
-$app->get(getenv("API_ROOT"). "/options/{uid}", function ($request, $response, $arguments) {
+$app->delete(getenv("API_ROOT"). "/options/{id}", function ($request, $response, $arguments) {
 
-    /* Check if token has needed scope. */
-    if (false === $this->token->hasScope(["question.all", "question.read"])) {
-        throw new ForbiddenException("Token not allowed to read options.", 403);
+    if (false === $this->token->hasScope(["question.all", "question.delete"])) {
+        throw new ForbiddenException("Token not allowed to delete questions.", 403);
     }
-
-    if (false === $option = $this->spot->mapper("App\Option")->getOne($arguments["uid"])->first()) {
-        throw new NotFoundException("Option not found.", 404);
+    $mapper = $this->spot->mapper("App\Option");
+    if (false === $option = $mapper->findById($arguments["id"])) {
+        throw new NotFoundException("Option: Option not found.", 404);
     };
 
-    /* Add Last-Modified and ETag headers to response. */
-    $response = $this->cache->withEtag($response, $option->etag());
-    $response = $this->cache->withLastModified($response, $option->timestamp());
 
-    /* If-Modified-Since and If-None-Match request header handling. */
-    /* Heads up! Apache removes previously set Last-Modified header */
-    /* from 304 Not Modified responses. */
-    if ($this->cache->isNotModified($request, $response)) {
-        return $response->withStatus(304);
+    $parent = $mapper($option->owned->start_id, ["owned"]);
+    if ($parent->data_type == "question") {
+        switch($parent->owned->type ) {
+            case "selection": 
+                switch($parent->owned->sub_type) {
+                    case "single": 
+                        $mapper->delete($option);
+                    break;
+                    case "level": 
+                    break;
+                }
+            break;
+        }
     }
 
-    /* Serialize the response data. */
-    $fractal = new Manager();
-    $fractal->setSerializer(new DataArraySerializer);
-    $resource = new Item($option, new OptionTransformer);
-    $data = $fractal->createData($resource)->toArray();
-
-    return $response->withStatus(200)
-        ->withHeader("Content-Type", "application/json")
-        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-});
-
-$app->patch(getenv("API_ROOT"). "/options/{uid}", function ($request, $response, $arguments) {
-
-    /* Check if token has needed scope. */
-    if (false === $this->token->hasScope(["option.all", "option.update"])) {
-        throw new ForbiddenException("Token not allowed to update options.", 403);
-    }
-
-    /* Load existing option using provided uid */
-    if (false === $option = $this->spot->mapper("App\Option")->first([
-        "uid" => $arguments["uid"]
-    ])) {
-        throw new NotFoundException("Option not found.", 404);
-    };
-
-    /* PATCH requires If-Unmodified-Since or If-Match request header to be present. */
-    if (false === $this->cache->hasStateValidator($request)) {
-        throw new PreconditionRequiredException("PATCH request is required to be conditional.", 428);
-    }
-
-    /* If-Unmodified-Since and If-Match request header handling. If in the meanwhile  */
-    /* someone has modified the option respond with 412 Precondition Failed. */
-    if (false === $this->cache->hasCurrentState($request, $option->etag(), $option->timestamp())) {
-        throw new PreconditionFailedException("Option has been modified.", 412);
-    }
-
-    $body = $request->getParsedBody();
-    $option ->data($body);
-    $this->spot->mapper("App\Option")->save($option);
-
-    /* Add Last-Modified and ETag headers to response. */
-    $response = $this->cache->withEtag($response, $option->etag());
-    $response = $this->cache->withLastModified($response, $option->timestamp());
-
-    $fractal = new Manager();
-    $fractal->setSerializer(new DataArraySerializer);
-    $resource = new Item($option, new OptionTransformer);
-    $data = $fractal->createData($resource)->toArray();
-    $data["status"] = "ok";
-    $data["message"] = "Option updated";
-
-    return $response->withStatus(200)
-        ->withHeader("Content-Type", "application/json")
-        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-});
-
-$app->put(getenv("API_ROOT"). "/options/{uid}", function ($request, $response, $arguments) {
-
-    /* Check if token has needed scope. */
-    if (false === $this->token->hasScope(["option.all", "option.update"])) {
-        throw new ForbiddenException("Token not allowed to update Option.", 403);
-    }
-
-    /* Load existing option using provided uid */
-    if (false === $option= $this->spot->mapper("App\Option")->first([
-        "uid" => $arguments["uid"]
-    ])) {
-        throw new NotFoundException("Option not found.", 404);
-    };
-
-    /* PUT requires If-Unmodified-Since or If-Match request header to be present. */
-    if (false === $this->cache->hasStateValidator($request)) {
-        throw new PreconditionRequiredException("PUT request is required to be conditional.", 428);
-    }
-
-    /* If-Unmodified-Since and If-Match request header handling. If in the meanwhile  */
-    /* someone has modified the option respond with 412 Precondition Failed. */
-    if (false === $this->cache->hasCurrentState($request, $option->etag(), $option->timestamp())) {
-        throw new PreconditionFailedException("Option has been modified.", 412);
-    }
-
-    $body = $request->getParsedBody();
-
-    /* PUT request assumes full representation. If any of the properties is */
-    /* missing set them to default values by clearing the question object first. */
-    $option->clear();
-    $option->data($body);
-    $this->spot->mapper("App\Option")->save($option);
-
-    /* Add Last-Modified and ETag headers to response. */
-    $response = $this->cache->withEtag($response, $option->etag());
-    $response = $this->cache->withLastModified($response, $option->timestamp());
-
-    $fractal = new Manager();
-    $fractal->setSerializer(new DataArraySerializer);
-    $resource = new Item($option, new OptionTransformer);
-    $data = $fractal->createData($resource)->toArray();
-    $data["status"] = "ok";
-    $data["message"] = "Option updated";
-
-    return $response->withStatus(200)
-        ->withHeader("Content-Type", "application/json")
-        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-});
-
-$app->delete(getenv("API_ROOT"). "/options/{uid}", function ($request, $response, $arguments) {
-
-    /* Check if token has needed scope. */
-    if (false === $this->token->hasScope(["option.all", "option.delete"])) {
-        throw new ForbiddenException("Token not allowed to delete option.", 403);
-    }
-
-    /* Load existing option using provided uid */
-    if (false === $option = $this->spot->mapper("App\Option")->first([
-        "uid" => $arguments["uid"]
-    ])) {
-        throw new NotFoundException("Option not found.", 404);
-    };
-
-    $this->spot->mapper("App\Option")->delete($option);
 
     $data["status"] = "ok";
     $data["message"] = "Option deleted";

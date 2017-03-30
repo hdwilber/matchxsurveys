@@ -1,5 +1,6 @@
 <?php
 use App\Question;
+use App\Element;
 use App\Logic;
 use App\MatchLogic;
 use App\Match;
@@ -19,38 +20,37 @@ use League\Fractal\Resource\Item;
 use League\Fractal\Resource\Collection;
 use League\Fractal\Serializer\DataArraySerializer;
 
-$app->get(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/questions/{questionId}/evaluate", function ($request, $response, $arguments) {
-    $mapper = $this->spot->mapper("App\TakenQuiz");
-    $quMapper = $this->spot->mapper("App\Question");
+//$app->get(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/questions/{questionId}/evaluate", function ($request, $response, $arguments) {
+    //$mapper = $this->spot->mapper("App\TakenQuiz");
+    //$quMapper = $this->spot->mapper("App\Question");
     
-    $takenQuiz = $mapper->findById($arguments['takenQuizId']);
-    if ($takenQuiz === false) throw new NotFoundException("Taken Quiz not found", 404);
-    $question = $quMapper->findById($arguments['questionId']);
-    if ($question === false) throw new NotFoundException("Taken Quiz: Question not found", 404);
+    //$takenQuiz = $mapper->findById($arguments['takenQuizId']);
+    //if ($takenQuiz === false) throw new NotFoundException("Taken Quiz not found", 404);
+    //$question = $quMapper->findById($arguments['questionId']);
+    //if ($question === false) throw new NotFoundException("Taken Quiz: Question not found", 404);
 
-    $data = [];
-    $data['show'] = $question->check($this->spot, 'show', $takenQuiz); 
-    $data['hide'] = $question->check($this->spot, 'hide', $takenQuiz); 
-    $data['visibility'] = $question->checkVisibility($this->spot, $takenQuiz); 
+    //$data = [];
+    //$data['show'] = $question->check($this->spot, 'show', $takenQuiz); 
+    //$data['hide'] = $question->check($this->spot, 'hide', $takenQuiz); 
+    //$data['visibility'] = $question->checkVisibility($this->spot, $takenQuiz); 
 
-    return $response->withStatus(200)
-        ->withHeader("Content-Type", "application/json")
-        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-
-
-});
+    //return $response->withStatus(200)
+        //->withHeader("Content-Type", "application/json")
+        //->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+//});
 
 $app->get(getenv("API_ROOT"). "/taken-quizzes", function ($request, $response, $arguments) {
 
-    /* Check if token has needed scope. */
     if (false === $this->token->hasScope(["question.all", "question.list"])) {
         throw new ForbiddenException("Token not allowed to list Taken Quizzes.", 403);
     }
-    $mapper = $this->spot->mapper("App\TakenQuiz");
+    $mapper = $this->spot->mapper("App\Element");
+    $tqs = $mapper->findAllByType("taken-quiz", ['owned', 'children']);
 
-    $tqs = $mapper->findAllFromUser($this->token->getUser());
+    foreach($tqs as $tq) {
+        $tq->questionary = $mapper->findById($tq->owned->questionary_id, ['owned']);
+    }
 
-    /* Serialize the response data. */
     $fractal = new Manager();
     $fractal->setSerializer(new DataArraySerializer);
     $resource = new Collection($tqs, new TakenQuizTransformer);
@@ -61,74 +61,93 @@ $app->get(getenv("API_ROOT"). "/taken-quizzes", function ($request, $response, $
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 });
 
-$app->post(getenv("API_ROOT"). "/taken-quizzes", function ($request, $response, $arguments) {
+
+
+$app->get(getenv("API_ROOT"). "/questionaries/{id}/take", function ($request, $response, $arguments) {
     if (false === $this->token->hasScope(["question.all", "question.create"])) {
         throw new ForbiddenException("Token not allowed to create taken quizzes.", 403);
     }
 
-    $mapper = $this->spot->mapper("App\TakenQuiz");
-    $quMapper = $this->spot->mapper("App\Questionary");
-
-    $body = $request->getParsedBody();
-
-    $questionary = $quMapper->findById($body['questionary_id']);
-    if ($questionary === false) {
+    $mapper =  $this->spot->mapper("App\Element");
+    $quest = $mapper->findById($arguments['id']);
+    if($quest === false) {
         throw new NotFoundException("Questionary not found", 404);
-    } else {
-        $body["user_id"] = $this->token->getUser();
-
-        $tq = new TakenQuiz($body);
-        $mapper->save($tq);
-
-        /* Add Last-Modified and ETag headers to response. */
-        $response = $this->cache->withEtag($response, $tq->etag());
-        $response = $this->cache->withLastModified($response, $tq->timestamp());
-        /* Serialize the response data. */
-        $fractal = new Manager();
-        $fractal->setSerializer(new DataArraySerializer);
-        $resource = new Item($tq, new TakenQuizTransformer);
-        $data = $fractal->createData($resource)->toArray();
-        $data["status"] = "ok";
-        $data["message"] = "New taken quiz created";
-
-        return $response->withStatus(201)
-            ->withHeader("Content-Type", "application/json")
-            ->withHeader("Location", $data["data"]["links"]["self"])
-            ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-
     }
-});
 
+    $new = new Element([
+        'user_id' => $this->token->getUser(),
+        'data_type' => 'taken-quiz',
+        'code' => $quest->code
+    ]);
+    $mapper->save($new);
+    $new->createLabel($mapper, "text", "");
+    $new->createData($mapper, [
+        'questionary_id' => $quest->id,
+    ]);
+
+    $fractal = new Manager();
+    $fractal->setSerializer(new DataArraySerializer);
+    $resource = new Item($new, new TakenQuizTransformer);
+    $data = $fractal->createData($resource)->toArray();
+    $data["status"] = "ok";
+    $data["message"] = "New taken quiz created";
+
+    return $response->withStatus(201)
+        ->withHeader("Content-Type", "application/json")
+        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+
+
+});
+//$app->get(getenv("API_ROOT"). "/taken-quizzes/{id}/metadata", function ($request, $response, $arguments) {
+
+    //if (false === $this->token->hasScope(["question.all", "question.read"])) {
+        //throw new ForbiddenException("Token not allowed to read taken quizzes.", 403);
+    //}
+    //$mapper = $this->spot->mapper("App\Element");
+
+    //if (false === $tq= $mapper->findById($arguments["id"]))
+    //{
+        //throw new NotFoundException("Taken Quiz not found.", 404);
+    //};
+
+    //if (false === $quest = $mapper->findById($arguments['id'])) {
+        //throw new NotFoundException("Questionary not found.", 404);
+    //}
+
+    //$fractal = new Manager();
+    //$fractal->setSerializer(new DataArraySerializer);
+    //$resource = new Item($tq, new TakenQuizTransformer);
+    //$data = $fractal->createData($resource)->toArray();
+
+    //return $response->withStatus(200)
+        //->withHeader("Content-Type", "application/json")
+        //->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+
+//});
 $app->get(getenv("API_ROOT"). "/taken-quizzes/{uid}", function ($request, $response, $arguments) {
 
     /* Check if token has needed scope. */
     if (false === $this->token->hasScope(["question.all", "question.read"])) {
         throw new ForbiddenException("Token not allowed to read taken quizzes.", 403);
     }
-    $mapper = $this->spot->mapper("App\TakenQuiz");
+    $mapper = $this->spot->mapper("App\Element", ['owned', 'children']);
 
     if (false === $tq= $mapper->findById($arguments["uid"]))
     {
         throw new NotFoundException("Taken Quiz not found.", 404);
     };
-
-
-    /* Add Last-Modified and ETag headers to response. */
-    $response = $this->cache->withEtag($response, $tq->etag());
-    $response = $this->cache->withLastModified($response, $tq->timestamp());
-
-    /* If-Modified-Since and If-None-Match request header handling. */
-    /* Heads up! Apache removes previously set Last-Modified header */
-    /* from 304 Not Modified responses. */
-    if ($this->cache->isNotModified($request, $response)) {
-        return $response->withStatus(304);
-    }
+    $tq->questionary = $mapper->findById($tq->owned->questionary_id, ['owned', 'children']);
 
     /* Serialize the response data. */
     $fractal = new Manager();
     $fractal->setSerializer(new DataArraySerializer);
+
+
+    $resQuest = new Item($tq->questionary, new QuestionaryTransformer);
+
     $resource = new Item($tq, new TakenQuizTransformer);
     $data = $fractal->createData($resource)->toArray();
+    $data['data']['questionary'] = $fractal->createData($resQuest)->toArray()['data'];
 
     return $response->withStatus(200)
         ->withHeader("Content-Type", "application/json")
@@ -227,20 +246,20 @@ $app->put(getenv("API_ROOT"). "/taken-quizzes/{uid}", function ($request, $respo
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 });
 
-$app->delete(getenv("API_ROOT"). "/taken-quizzes/{uid}", function ($request, $response, $arguments) {
+$app->delete(getenv("API_ROOT"). "/taken-quizzes/{id}", function ($request, $response, $arguments) {
 
     /* Check if token has needed scope. */
     if (false === $this->token->hasScope(["question.all", "question.delete"])) {
         throw new ForbiddenException("Token not allowed to delete Taen Quizz.", 403);
     }
-    $mapper = $this->spot->mapper("App\TakenQuiz");
-
-    /* Load existing wquestion using provided uid */
-    if (false === $tq= $mapper->getById($arguments["uid"])) {
-        throw new NotFoundException("Taken Quiz not found.", 404);
+    $mapper = $this->spot->mapper("App\Element");
+    $takenQuiz = $mapper->findById($arguments['id']);
+    if ($takenQuiz=== false){
+        throw new NotFoundException("TakenQuiz not found.", 404);
     };
 
-    $mapper->delete($tq);
+    $mapper->deleteRecursive($takenQuiz);
+    $mapper->deleteAll($takenQuiz);
 
     $data["status"] = "ok";
     $data["message"] = "Taken Quiz deleted";
