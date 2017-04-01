@@ -148,7 +148,9 @@ class Element extends \Spot\Entity
             'parent' => $mapper->belongsTo($entity, 'App\Element', 'parent_id'),
             'children' => $mapper->hasMany($entity, 'App\Element', 'parent_id', $entity->localKey),
             'start' => $mapper->belongsTo($entity, 'App\Element', 'first_id'),
-            'end' => $mapper->belongsTo($entity, 'App\Element', 'last_id')
+            'end' => $mapper->belongsTo($entity, 'App\Element', 'last_id'),
+            'first' => $mapper->belongsTo($entity, 'App\Element', 'first_id'),
+            'last' => $mapper->belongsTo($entity, 'App\Element', 'last_id')
         ];
     }
 }

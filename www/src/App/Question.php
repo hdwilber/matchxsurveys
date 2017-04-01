@@ -26,6 +26,7 @@ class Question extends \Spot\Entity
             "id" => ["type" => "integer", "unsigned" => true, "autoincrement" => true, "primary"=>true],
             "type" => ["type" => "string"],
             "sub_type" => ["type" => "string"],
+            "default_visibility" => ["type" => "boolean", 'value'=>true],
             "start_id" => ["type" => "integer"],
             "element_id" => ["type" => "integer"]
         ];

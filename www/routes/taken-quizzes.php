@@ -9,6 +9,8 @@ use App\TakenQuiz;
 use App\TakenQuizTransformer;
 use App\Questionary;
 use App\QuestionaryTransformer;
+use App\Answer;
+use App\AnswerTransformer;
 
 use Exception\NotFoundException;
 use Exception\ForbiddenException;
@@ -98,32 +100,32 @@ $app->get(getenv("API_ROOT"). "/questionaries/{id}/take", function ($request, $r
 
 
 });
-//$app->get(getenv("API_ROOT"). "/taken-quizzes/{id}/metadata", function ($request, $response, $arguments) {
+$app->get(getenv("API_ROOT"). "/taken-quizzes/{id}/history", function ($request, $response, $arguments) {
 
-    //if (false === $this->token->hasScope(["question.all", "question.read"])) {
-        //throw new ForbiddenException("Token not allowed to read taken quizzes.", 403);
-    //}
-    //$mapper = $this->spot->mapper("App\Element");
+    if (false === $this->token->hasScope(["question.all", "question.read"])) {
+        throw new ForbiddenException("Token not allowed to read taken quizzes.", 403);
+    }
+    $mapper = $this->spot->mapper("App\Element");
 
-    //if (false === $tq= $mapper->findById($arguments["id"]))
-    //{
-        //throw new NotFoundException("Taken Quiz not found.", 404);
-    //};
+    if (false === $tq= $mapper->findById($arguments["id"], ['owned', 'first']))
+    {
+        throw new NotFoundException("Taken Quiz not found.", 404);
+    };
 
-    //if (false === $quest = $mapper->findById($arguments['id'])) {
-        //throw new NotFoundException("Questionary not found.", 404);
-    //}
+    $answers = $mapper->listFrom($tq->first); 
 
-    //$fractal = new Manager();
-    //$fractal->setSerializer(new DataArraySerializer);
-    //$resource = new Item($tq, new TakenQuizTransformer);
-    //$data = $fractal->createData($resource)->toArray();
+    $fractal = new Manager();
+    $fractal->setSerializer(new DataArraySerializer);
+    $resource = new Item($tq, new TakenQuizTransformer);
+    $resA = new Collection($answers, new AnswerTransformer);
+    $data = $fractal->createData($resource)->toArray();
+    $data['data']['answers'] = $fractal->createData($resA)->toArray()['data'];
 
-    //return $response->withStatus(200)
-        //->withHeader("Content-Type", "application/json")
-        //->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+    return $response->withStatus(200)
+        ->withHeader("Content-Type", "application/json")
+        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 
-//});
+});
 $app->get(getenv("API_ROOT"). "/taken-quizzes/{uid}", function ($request, $response, $arguments) {
 
     /* Check if token has needed scope. */

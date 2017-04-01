@@ -120,7 +120,7 @@ $app->get(getenv("API_ROOT"). "/taken-quizzes/{id}/getNext", function ($request,
     if ($quest === false) {
         throw new NotFoundException("Questionary not found", 404);
     }
-    $answer = $mapper->getMapper("App\Questionary")->findNextQuestion($this->logger, $quest, null);
+    $answer = $mapper->getMapper("App\Questionary")->findNextQuestion($this->logger, $quest, $tq, null);
     if ($answer == false) {
         $data["answer"] = $answer;
         $data["status"] = "ok";
@@ -162,10 +162,11 @@ $app->post(getenv("API_ROOT"). "/taken-quizzes/{id}/answers", function ($request
     }
 
     $body = $request->getParsedBody();
+    //$this->logger->addInfo("STARTING LOOKING FOR ANSWER");
     $question = false;
     if($body['id'] == null) {
         if ($tq->first_id == null) {
-            $question = $mapper->getMapper("App\Questionary")->findNextQuestion($this->logger, $quest, null);
+            $question = $mapper->getMapper("App\Questionary")->findNextQuestion($this->logger, $quest, $tq, null);
 
             if ($question === false) {
             } else {
@@ -192,7 +193,7 @@ $app->post(getenv("API_ROOT"). "/taken-quizzes/{id}/answers", function ($request
         if ($answer === false) {
             if ($tq->last_id == null) {
                 // Fix this 
-                $answer = $mapper->getMapper("App\Questionary")->findNextQuestion($logger, $quest, null);
+                $answer = $mapper->getMapper("App\Questionary")->findNextQuestion($logger, $quest, $tq, null);
             } else {
                 $answer = $mapper->findById($tq->last_id);
             }
@@ -207,10 +208,10 @@ $app->post(getenv("API_ROOT"). "/taken-quizzes/{id}/answers", function ($request
                 ]);
             }
             $question = $answer->owned->question_id;
-            $this->logger->addInfo("Answer data", $answer->owned->toArray());
-            $nextQ = $mapper->getMapper("App\Questionary")->findNextQuestion($this->logger, $quest, $question);
+            //$this->logger->addInfo("Answer data", $answer->owned->toArray());
+            $nextQ = $mapper->getMapper("App\Questionary")->findNextQuestion($this->logger, $quest, $tq, $question);
             if ($nextQ === false) {
-                $this->logger->addInfo("TODO FALSO CARAJO");
+                //$this->logger->addInfo("TODO FALSO CARAJO");
             } else {
                 //$this->logger->addInfo("Next Question ", $question);
                 $new = new Element([

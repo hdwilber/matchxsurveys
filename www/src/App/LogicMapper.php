@@ -42,7 +42,9 @@ class LogicMapper extends ElementMapper
         $hide = $this->check($logger, $e, 'hide', $tq);
 
         if (!isset($hide) && !isset($show)) {
-            return true;
+            //return true;
+            return $e->owned->default_visibility;
+
         }
         if (isset($hide)) {
             return !$hide;
@@ -160,37 +162,34 @@ class LogicMapper extends ElementMapper
     }
 
     public function _evaluateSingle($logger, $tq, $e) {
-        $logger->addInfo("Starting to evalute ");
+        //$logger->addInfo("Evaluate Single::: " . $e->data_type);
         //$this->getMapper("App\Element")->findById($e);
         if ($e == null) {
             return null;
         } else {
-            $logger->addInfo("checkingmatch");
+            //$logger->addInfo("checkingmatch");
             if ($e->data_type == "match") {
                 $question = $this->getMapper('App\Element')->findById($e->owned->target_id);
+
+                $logger->addInfo("Evaluating Question:  ". $question);
                 if ($question === false) {
-                    $logger->addInfo("FALSE checkingmatch");
+                    //$logger->addInfo("FALSE checkingmatch");
                     return null;
                 }
-                $logger->addInfo("TRUE checkingmatch");
+                //$logger->addInfo("TRUE checkingmatch");
                 if ($question->owned->type == "selection" && $question->owned->sub_type == "simple") {
                     $option = $this->getMapper("App\Element")->findById($e->owned->target_option_id);
-                    $logger->addInfo("mother ucker");
+                    //$logger->addInfo("mother ucker");
                     if ($option->parent_id == $question->id) {
                         $answers = $this->getMapper("App\\Answer")->all()->where(['question_id' => $question->id, 'valid' => true]);
 
-                        $logger->addInfo("DATA", $answers->toArray());
+                        //$logger->addInfo("DATA", $answers->toArray());
                         $ansok = [];
+                        if ($answers->count() == 0) {
+                            return false;
+                        }
                         foreach($answers as $ans) {
-                            //$val = $this->getMapper("App\Element")->where(['id' => $ans->element_id, 'parent_id' => $tq->id])->first();
-
-                            //$aux = $this->getMapper("App\Match")->where([
-                                //'id' => $ans->element_id,
-                                //'parent_id' => $tq->id
-                            //])->first();
-                            //$logger->addInfo("ASDFASDFASFASDFADS ", $aux->toArray());
-
-                            $logger->addInfo("Counting answer");
+                            //$logger->addInfo("Counting answer");
                             $aux = $this->getMapper("App\Element")->where([
                                 'id' => $ans->element_id,
                                 'parent_id' => $tq->id
@@ -205,7 +204,7 @@ class LogicMapper extends ElementMapper
                                 }
                             }
                         }
-                        $logger->addInfo("ALL ANSWERS", $ansok);
+                        //$logger->addInfo("ALL ANSWERS", $ansok);
                         if (count($ansok) == 1) {
                             return $ansok[0];
                             
@@ -230,36 +229,31 @@ class LogicMapper extends ElementMapper
         }
     }
     public function _evaluate($logger, $tq, $e) {
+        $logger->addInfo("Evaluating::: " .$e->data_type);
         if ($e->data_type == "match") {
             return $this->_evaluateSingle($logger, $tq, $e);
         }
         else {
             $mls = $this->getMapper("App\Element")->findByParent($e);
-            //$logger->addInfo("ASDFASDFA", $mls->toArray());
             $ret = null;
             foreach($mls as $ml) {
-                if ($ml->data_type == "match-logic") {
+                $ev = null;
+                if ($ml->data_type == "match") {
+                    $ret = $this->_evaluate($logger, $tq, $ml);
+                } else if($ml->data_type == "match-logic") {
                     $ev = $this->_evaluate($logger, $tq, $ml);
-                    $logger->addInfo("Evaluation", ['ev' => $ev]);
+                    $logger->addInfo("Eval result: ", ['ev' => $ev, 'type' => $ml->data_type]);
                     if (isset($ev)) {
-                        if ($ml->owned->bool == "and" || $ml->owned->bool == null) {
-                            if (!isset($ret)) {
-                                $ret = true;
-                            } 
+                        if ($ml->owned->bool == null) {
+                            $ret = $ev;
+                        } else if ($ml->owned->bool == "and") {
                             $ret = $ret && $ev;
+                        } else if ( $ml->owned->bool ==  "or") {
+                            $ret = $ret || $ev;
                         }
-                        else if ($ml->owned->bool == "or"){
-                            if (!isset($ret)) {
-                                $ret = $ev;
-                            } else {
-                                $ret = $ret || $ev;
-                            }
-                        }
-                    } else {
-                        $ret = null;
                     }
                 } else {
-                    $ret = $this->_evaluate($logger, $tq, $ml);
+                    $ret = null;
                 }
             }
             return $ret;

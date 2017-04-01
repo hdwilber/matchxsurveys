@@ -40,7 +40,8 @@ $app->post(getenv("API_ROOT"). "/groups/{id}/questions/append", function ($reque
     $new->createLabel($mapper, "text", $body['label']);
     $question = $new->createData($mapper, [
         'type'=>$body['type'], 
-        'sub_type' => (isset($body['sub_type'])? $body['sub_type'] : null)
+        'sub_type' => (isset($body['sub_type'])? $body['sub_type'] : null),
+        'default_visibility' => (isset($body['default_visibility']) ? $body['default_visibility'] : null)
     ]);
 
     $mapper->appendIn($group, $new);
