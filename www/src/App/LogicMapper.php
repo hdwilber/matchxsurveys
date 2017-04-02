@@ -229,7 +229,7 @@ class LogicMapper extends ElementMapper
         }
     }
     public function _evaluate($logger, $tq, $e) {
-        $logger->addInfo("Evaluating::: " .$e->data_type);
+        //$logger->addInfo("Evaluating::: " .$e->data_type);
         if ($e->data_type == "match") {
             return $this->_evaluateSingle($logger, $tq, $e);
         }
@@ -251,6 +251,15 @@ class LogicMapper extends ElementMapper
                         } else if ( $ml->owned->bool ==  "or") {
                             $ret = $ret || $ev;
                         }
+                    } else {
+                        //if ($ml->owned->bool == null) {
+                            //$ret = null;
+                        //} else if ($ml->owned->bool == "and") {
+                            //$ret = null;
+                        //} else if ( $ml->owned->bool ==  "or") {
+                            //$ret = $ret || $ev;
+                        //}
+                        return null;
                     }
                 } else {
                     $ret = null;

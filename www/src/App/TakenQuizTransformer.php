@@ -17,8 +17,9 @@ class TakenQuizTransformer extends Fractal\TransformerAbstract
                 "label"  => [
                     'type' => "text",
                     "data" => (string)$e->owned->questionary->label->data
-                ]
-            ]
+                ],
+            ],
+            'created_at' => $e->created_at
         ];
     }
 }
