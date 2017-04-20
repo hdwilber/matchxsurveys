@@ -15,6 +15,9 @@ class ElementMapper extends BaseMapper
         $l->data(['data'=> $t]);
         $e->label->mapper()->save($l);
     }
+    public function getRoots($t) {
+        return $this->all()->where(['parent_id' => null, 'data_type'=>$t])->with(['owned', 'label']);
+    }
     public function _deleteRecursive($e) {
         $cnt = $this->where(['parent_id' => $e->id])->count();
         if ($cnt == 0) {
@@ -77,11 +80,115 @@ class ElementMapper extends BaseMapper
     public function listRecursive($e) {
     }
 
+
+    public function findAllLogics($e) {
+        if ($e->first_id == null) {
+            return $this->_findAllLogics($e);
+        } else {
+            return ['id' => $e->id, 'type'=> $e->data_type, 'code' => $e->code, 'data' => $e->owned, 'label' => ['type' => $e->label->type, 'data'=>$e->label->data], 'children' =>$this->_findAllLogics($e)];
+        }
+    }
+
+    public function _findAllLogics($e) {
+        if ($e->first_id == null) {
+            return ['id' => $e->id, 'type'=> $e->data_type, 'code' => $e->code, 'data' => $e->owned, 'label' => ['type' => "text", 'data'=>$e->data_type], 
+            ];
+        }
+        else {
+            $ch = $this->findById($e->first_id, ['owned', 'label']);
+            $ret = [];
+            if ($ch->first_id == null) {
+                array_push($ret, $this->_findAllLogics($ch));
+            } else {
+                array_push($ret, ['id' => $ch->id, 'type' => $ch->data_type, 'code' => $ch->code, 'data' => $ch->owned, 'label' => ['type' => "text", 'data'=> ""], 'children' => $this->_findAllLogics($ch)
+                ]);
+            }
+
+            while($ch->next_id != null) {
+                $ch = $this->findById($ch->next_id, ['owned', 'label']);
+                if ($ch->first_id == null) {
+                    array_push($ret, $this->_findAllLogics($ch));
+                } else {
+                    array_push($ret, ['id' => $ch->id, 'type'=>$ch->data_type,
+                       'code' => $ch->code, 'data' => $ch->owned, 'label' => ['type' => $ch->label->type, 'data'=>$ch->label->data], 'children'=>$this->_findAllLogics($ch)
+                   ]);
+                }
+            }
+            return $ret;
+        }
+    }
+    public function findAllRecursive($e) {
+        if ($e->first_id == null) {
+            return $this->_findAllRecursive($e);
+        } else {
+            $logics = $this->findAllByTypeFrom($e, "logic");
+            $rett = [];
+            foreach($logics as $l) {
+                $retx = $this->findAllLogics($l);
+                array_push($rett, $retx);
+            }
+            return ['id' => $e->id, 'type'=> $e->data_type, 'code' => $e->code, 'data' => $e->owned, 'label' => ['type' => $e->label->type, 'data'=>$e->label->data], 'children' =>$this->_findAllRecursive($e),
+            'logics' => ['id' => 0, 'type'=> 'root', 'label' => ['type' => 'text', 'data'=>'Logics'], 'children' => $rett]
+            ];
+        }
+    }
+    public function _findAllRecursive($e) {
+        if ($e->first_id == null) {
+            $logics = $this->findAllByTypeFrom($e, "logic");
+            $rett= [];
+            foreach($logics as $l) {
+                $retx = $this->findAllLogics($l);
+                array_push($rett, $retx);
+            }
+            return ['id' => $e->id, 'type'=> $e->data_type, 'code' => $e->code, 'data' => $e->owned, 'label' => ['type' => $e->label->type, 'data'=>$e->label->data], 
+                'logics' => ['id' => 0, 'type'=> 'root', 'label' => ['type' => 'text', 'data'=>'Logics'], 'children' => $rett ]
+            ];
+        }
+        else {
+            $ch = $this->findById($e->first_id, ['owned', 'label']);
+            $ret = [];
+            if ($ch->first_id == null) {
+                array_push($ret, $this->_findAllRecursive($ch));
+
+            } else {
+                $logics = $this->findAllByTypeFrom($ch, "logic");
+                $rett = [];
+                foreach($logics as $l) {
+                    $retx = $this->findAllLogics($l);
+                    array_push($rett, $retx);
+                }
+                array_push($ret, ['id' => $ch->id, 'type' => $ch->data_type, 'code' => $ch->code, 'data' => $ch->owned, 'label' => ['type' => $ch->label->type, 'data'=> $ch->label->data], 'children' => $this->_findAllRecursive($ch),
+                'logics' => ['id' => 0, 'type'=> 'root', 'label' => ['type' => 'text', 'data'=>'Logics'], 'children' => $rett]
+                ]);
+
+            }
+            while($ch->next_id != null) {
+                $ch = $this->findById($ch->next_id, ['owned', 'label']);
+                if ($ch->first_id == null) {
+                    array_push($ret, $this->_findAllRecursive($ch));
+                } else {
+                    $logics = $this->findAllByTypeFrom($ch, "logic");
+
+                    $rett= [];
+                    foreach($logics as $l) {
+                        $retx = $this->findAllLogics($l);
+                        array_push($rett, $retx);
+                    }
+                    array_push($ret, ['id' => $ch->id, 'type'=>$ch->data_type,
+                       'code' => $ch->code, 'data' => $ch->owned, 'label' => ['type' => $ch->label->type, 'data'=>$ch->label->data], 'children'=>$this->_findAllRecursive($ch),
+                       'logics' => ['id' => 0, 'type'=> 'root', 'label' => ['type' => 'text', 'data'=>'Logics'], 'children' => $rett ]
+                   ]);
+                }
+            }
+            return $ret;
+        }
+    }
+
     public function listFrom($el) {
         if ($el != null) {
             $ret = [$el];
             while($el->next_id != null) {
-                $el = $this->findById($el->next_id);
+                $el = $this->findById($el->next_id, ['owned', 'label']);
                 array_push($ret, $el);
             }
             return new Collection($ret);
@@ -127,11 +234,21 @@ class ElementMapper extends BaseMapper
     }
     public function prepend($e, $n) {
         $l = $this->getFirst($e);
+        if ($e->parent_id != null) {
+            $p = $this->findById($e->parent_id);
+            $p->data(['first_id' => $n->id]);
+            $this->save($p);
+        }
         return $this->prevTo($l, $n);
     }
 
     public function append($e, $n) {
         $l = $this->getLast($e);
+        if ($e->parent_id != null) {
+            $p = $this->findById($e->parent_id);
+            $p->data(['last_id' => $n->id]);
+            $this->save($p);
+        }
         return $this->nextTo($l, $n);
     }
 
@@ -174,8 +291,9 @@ class ElementMapper extends BaseMapper
         }
         return $n;
     }
-    public function findAllByTypeFrom($e, $type, $with=['owned']) {
-        return $this->all()->where(['data_type' => $type, 'parent_id' => $e->id])->with($with);
+    public function findAllByTypeFrom($e, $type, $with=['owned', 'label']) {
+        return $this->all()->where(['data_type' => $type, 'parent_id' => $e->id])->with($with)->execute();
+
     }
 
     public function findAllByType($type, $with=['owned']) {
@@ -185,7 +303,7 @@ class ElementMapper extends BaseMapper
         $dataMapper = $this->getMapper(Element::$typeMappers[$e->data_type]);
         $labelMapper = $this->getMapper("App\Label");
         $owned = $e->owned->entity();
-        $label = $e->owned->entity();
+        $label = $e->label->entity();
         if ($owned === false) {
         } else {
             $dataMapper->delete($owned);
@@ -193,7 +311,7 @@ class ElementMapper extends BaseMapper
         if ($label === false) {
 
         } else {
-            $labelMapper->delete($e->label->entity());
+            $labelMapper->delete($label);
         }
 
         // Deleting from parents
@@ -232,7 +350,6 @@ class ElementMapper extends BaseMapper
         }
 
         $this->delete($e);
-
 
         //$dataMapper->delete($e->owned);
         //$labelMapper->findById($e->label->id);

@@ -8,7 +8,7 @@ class BaseMapper extends Mapper
         return $this->where(['id' => $id])->with($with)->first();
     }
     public function findAll($where=[], $with = []) {
-        return $this->all()->where($where)->with($with);
+        return $this->all()->where($where)->with($with)->execute();
     }
     public function findLastModified() {
         return $this->all()->order(["updated_at"=>"DESC"])->first();

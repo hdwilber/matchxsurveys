@@ -35,6 +35,66 @@ class Element extends \Spot\Entity
         "logic" => "App\\Logic"
     ];
 
+    public static $addingTypes = [
+        [
+            "name" => "Prev To",
+            "code" => "prev-to",
+            "description" => "Inserts element before of the..."
+        ],
+        [
+            "name" => "Next To",
+            "code" => "next-to",
+            "description" => "Inserts element after of the..."
+        ],
+        [
+            "name" => "Prepend",
+            "code" => "prepend",
+            "description" => "Prepends the element to siblings..."
+        ],
+        [
+            "name" => "Append",
+            "code" => "append",
+            "description" => "Append the element to siblings ..."
+        ],
+        [
+            "name" => "Append In",
+            "code" => "append-in",
+            "description" => "Append the element as child"
+        ],
+        [
+            "name" => "Prepend In",
+            "code" => "prepend-in",
+            "description" => "Prepend the elemnt as child"
+        ],
+        [
+            "name" => "Make Root",
+            "code" => "root",
+            "description" => "Puts the element in the root"
+        ]
+    ];
+    public static $dataTypes = [
+        [
+            "name" => "Question",
+            "code" => "question",
+            "description" => "Main element to play with"
+        ],
+        [
+            "name" => "Questionary",
+            "code" => "questionary",
+            "description" => "Root element to play with"
+        ],
+        [
+            "name" => "Option",
+            "code" => "option",
+            "description" => "Some element to play with"
+        ],
+        [
+            "name" => "Group",
+            "code" => "group",
+            "description" => "Main element to group nd play with"
+        ]
+    ];
+
     public static function fields()
     {
         return [
@@ -80,14 +140,11 @@ class Element extends \Spot\Entity
 
     public function saveData($mapper, $d) {
         $data_mapper = $mapper->getMapper(static::$typeMappers[$this->data_type]);
-        $ret['d'] = $d;
         // Group Type
         $owned = $data_mapper->findById($this->owned->id);
-        $ret['ownoed'] = $owned;
         $owned->data($d);
         $data_mapper->save($owned);
-        $ret['ownedSaved'] = $owned;
-        return $ret;
+        return $owned;
     }
 
     public function createData(MapperInterface $mapper, $data) {
@@ -135,7 +192,6 @@ class Element extends \Spot\Entity
         $data_mapper->save($label);
         return $label;
     }
-
 
     public static function relations(MapperInterface $mapper, EntityInterface $entity)
     {

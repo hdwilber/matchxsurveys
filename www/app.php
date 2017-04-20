@@ -49,6 +49,7 @@ require __DIR__ . "/src/App/TakenQuizMapper.php";
 require __DIR__ . "/src/App/AnswerMapper.php";
 
 
+require __DIR__ . "/routes/elements.php";
 require __DIR__ . "/routes/token.php";
 require __DIR__ . "/routes/users.php";
 require __DIR__ . "/routes/questions.php";

@@ -158,10 +158,10 @@ $app->delete(getenv("API_ROOT"). "/questionaries/{id}", function ($request, $res
         throw new NotFoundException("Questionary not found.", 404);
     };
 
-    $mapper->deleteAll($element);
+    $mapper->deleteRecursive($element);
 
     $data["status"] = "ok";
-    $data["message"] = "Questionary deleted";
+    $data["message"] = "Reursive remoting deleted";
 
     return $response->withStatus(200)
         ->withHeader("Content-Type", "application/json")

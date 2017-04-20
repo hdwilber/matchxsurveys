@@ -19,7 +19,6 @@ class Questionary extends \Spot\Entity
     {
         return [
             "id" => ["type" => "integer", "unsigned" => true, "autoincrement" => true, "primary" => true],
-            "start_id" => ['type' => 'integer'],
             "element_id" => ['type' => 'integer']
         ];
     }

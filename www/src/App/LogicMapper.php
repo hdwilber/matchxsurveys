@@ -92,6 +92,43 @@ class LogicMapper extends ElementMapper
         }
     }
 
+    public function findAllLogics($e) {
+        if ($e->first_id == null) {
+            return $this->_findAllLogics($e);
+        } else {
+            return ['id' => $e->id, 'type'=> $e->data_type, 'code' => $e->code, 'data' => $e->owned, 'label' => ['type' => $e->label->type, 'data'=>$e->label->data], 'children' =>$this->_findAllLogics($e)];
+        }
+    }
+
+    public function _findAllLogics($e) {
+        if ($e->first_id == null) {
+            return ['id' => $e->id, 'type'=> $e->data_type, 'code' => $e->code, 'data' => $e->owned, 'label' => ['type' => "text", 'data'=>$e->data_type], 
+            ];
+        }
+        else {
+            $ch = $this->findById($e->first_id, ['owned', 'label']);
+            $ret = [];
+            if ($ch->first_id == null) {
+                array_push($ret, $this->_findAllLogics($ch));
+            } else {
+                array_push($ret, ['id' => $ch->id, 'type' => $ch->data_type, 'code' => $ch->code, 'data' => $ch->owned, 'label' => ['type' => "text", 'data'=> ""], 'children' => $this->_findAllLogics($ch)
+                ]);
+            }
+
+            while($ch->next_id != null) {
+                $ch = $this->getMapper("App\Element")->findById($ch->next_id, ['owned', 'label']);
+                if ($ch->first_id == null) {
+                    array_push($ret, $this->_findAllLogics($ch));
+                } else {
+                    array_push($ret, ['id' => $ch->id, 'type'=>$ch->data_type,
+                       'code' => $ch->code, 'data' => $ch->owned, 'label' => ['type' => $ch->label->type, 'data'=>$ch->label->data], 'children'=>$this->_findAllLogics($ch)
+                   ]);
+                }
+            }
+            return $ret;
+        }
+    }
+
 
     public function findAllRecursive($e) {
         if ($e->first_id == null) {

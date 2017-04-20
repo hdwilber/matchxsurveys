@@ -261,7 +261,7 @@ $app->delete(getenv("API_ROOT"). "/taken-quizzes/{id}", function ($request, $res
     };
 
     $mapper->deleteRecursive($takenQuiz);
-    $mapper->deleteAll($takenQuiz);
+    //$mapper->deleteAll($takenQuiz);
 
     $data["status"] = "ok";
     $data["message"] = "Taken Quiz deleted";

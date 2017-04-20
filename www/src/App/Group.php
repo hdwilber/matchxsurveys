@@ -22,7 +22,7 @@ class Group extends \Spot\Entity
         return [
             "id" => ["type" => "integer", "unsigned" => true, "autoincrement" => true, "primary"=>true],
             "start_id" => ["type" => "integer"],
-            "default_visibility" => ["type" => "boolean"],
+            "default_visibility" => ["type" => "boolean", 'value' => true],
             "element_id" => ["type" => "integer"]
         ];
     }

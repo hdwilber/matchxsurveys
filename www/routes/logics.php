@@ -24,55 +24,6 @@ use League\Fractal\Resource\Collection;
 use League\Fractal\Serializer\DataArraySerializer;
 
 
-//$app->get(getenv("API_ROOT"). "/logics/{logicId}/hierarchy", function ($request, $response, $arguments) {
-    //$mapper = $this->spot->mapper("App\Logic");
-
-    //$logic = $mapper->findById($arguments['logicId']);
-    //if ($logic === false) throw new NotFoundException("Logic: not found", 404);
-    //$data['logic']['data']['type'] = 'match-logic';
-    //$data['logic']['data']['name'] = 'root';
-    //$data['logic']['data']['uid'] = $logic->match_logic_id;
-    //$data['logic']['expanded'] = true;
-    //$data['logic']['children'] = $logic->buildHierarchy($this->spot);
-    //return $response->withStatus(200)
-        //->withHeader("Content-Type", "application/json")
-        //->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-//});
-//$app->get(getenv("API_ROOT"). "/steps/{stepId}/logics", function ($request, $response, $arguments) {
-
-    //if (false === $this->token->hasScope(["question.all", "question.list"])) {
-        //throw new ForbiddenException("Token not allowed to list logics.", 403);
-    //}
-    //$mapper = $this->spot->mapper("App\Logic");
-    //$stMapper = $this->spot->mapper("App\Step");
-
-    //$step = $stMapper->findById($arguments['stepId']);
-
-    //if ($step === false) {
-        //throw new NotFoundException("Logic: Step not found", 404);
-    //} else {
-        //$first = $mapper->findLastModifiedFromStep($step);
-        //if ($first) {
-            //$response = $this->cache->withEtag($response, $first->etag());
-            //$response = $this->cache->withLastModified($response, $first->timestamp());
-        //}
-
-        //if ($this->cache->isNotModified($request, $response)) {
-            //return $response->withStatus(304);
-        //}
-
-        //$logics = $mapper->findAllFromStep($step);
-
-        //$fractal = new Manager();
-        //$fractal->setSerializer(new DataArraySerializer);
-        //$resource = new Collection($logics, new LogicTransformer);
-        //$data = $fractal->createData($resource)->toArray();
-
-        //return $response->withStatus(200)
-            //->withHeader("Content-Type", "application/json")
-            //->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-    //}
-//});
 $app->get(getenv("API_ROOT"). "/elements/{id}/logics", function ($request, $response, $arguments) {
 
     if (false === $this->token->hasScope(["question.all", "question.list"])) {
