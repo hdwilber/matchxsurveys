@@ -37,7 +37,7 @@ class MonologSQLLogger implements SQLLogger
             if (null === $param) {
                 return "NULL";
             } else {
-                return "'" . $param . "'";
+                return "'" . json_encode($param) . "'";
             }
         }, $sql);
     }

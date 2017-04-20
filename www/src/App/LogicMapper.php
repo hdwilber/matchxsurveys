@@ -310,26 +310,4 @@ class LogicMapper extends ElementMapper
         return $this->_evaluate($logger, $tq, $e);
     }
 
-    //public function createMatchLogic($d) {
-        //$e = new Element([
-            //'data_type' => 'match-logic',
-            //'user_id' => $d['user_id'],
-            //'code' => null
-        //]);
-        //$this->getMapper('App\Element')->save($e);
-        //$matchLogic = $e->createData($this->getMapper('App\Element'),['bool' => null]);
-
-        //return $e;
-    //}
-    //public function insertLogic($e, $data) {
-        //$root = $this->createMatchLogic($data);
-        //$logic = new Logic(['action' => $data['action']]);
-        //$logic->data(['element_id' => $e->id, 'root_id' => $root->id]);
-        //$this->save($logic);
-        //return $logic;
-    //}
-    //public function deleteLogic($l) {
-        //$this->getMapper('App\Element')->deleteRecursive($l->root->entity());
-        //$this->delete($l);
-    //}
 }

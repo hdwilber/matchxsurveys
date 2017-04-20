@@ -134,7 +134,7 @@ class Option extends \Spot\Entity
     public static function relations(MapperInterface $mapper, EntityInterface $entity)
     {
         return [
-            'options' => $mapper->hasMany($entity, 'App\Option', 'question_id', $entity->localKey)
+            //'options' => $mapper->hasMany($entity, 'App\Option', 'question_id', $entity->localKey)
             //'logics' => $mapper->hasMany($entity, 'App\Logic', 'question_id', $entity->localKey)
         ];
     }

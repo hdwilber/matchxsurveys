@@ -21,6 +21,23 @@ use League\Fractal\Resource\Item;
 use League\Fractal\Resource\Collection;
 use League\Fractal\Serializer\DataArraySerializer;
 
+$app->get(getenv("API_ROOT"). "/elements/{id}/test", function ($request, $response, $arguments) {
+
+    $mapper = $this->spot->mapper("App\Element");
+    $el = $mapper->findById($arguments['id'], ['owned','label']);
+    if ($el === false) {
+        throw new NotFoundException("Element not found", 404);
+    }
+
+    $data['data'] = $el->toArray();
+    $data["status"] = "ok";
+    $data["message"] = "List of Adding Places retrieved";
+
+    return $response->withStatus(201)
+        ->withHeader("Content-Type", "application/json")
+        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+});
+
 $app->get(getenv("API_ROOT"). "/elements/addingTypes", function ($request, $response, $arguments) {
 
     $data['data'] = Element::$addingTypes;
@@ -56,16 +73,7 @@ $app->get(getenv("API_ROOT"). "/elements/{id}", function ($request, $response, $
         throw new NotFoundException("Element not found", 404);
     }
 
-    //$logics = $mapper->findAllByTypeFrom($e, "logic");
-
-    //$result = [];
-    //foreach($logics as $l) {
-        //$ret = $mapper->findAllRecursive($l);
-        //array_push($result, $ret);
-    //}
-
     $data['data'] = $mapper->findAllRecursive($el);
-    //$data['data']['logics'] = $result;
 
     $fractal = new Manager();
     $fractal->setSerializer(new DataArraySerializer);

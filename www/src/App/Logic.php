@@ -80,8 +80,6 @@ class Logic extends \Spot\Entity
     public static function relations(MapperInterface $mapper, EntityInterface $entity)
     {
         return [
-            "start" => $mapper->belongsTo($entity, "App\Element", "start_id"),
-                "questionary" => $mapper->belongsTo($entity, "App\Element", "questionary_id")
         ];
     }
 }

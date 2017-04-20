@@ -36,55 +36,6 @@ class Group extends \Spot\Entity
     }
 
     public function findNext($spot, $tq) {
-        //if ($this->next_id == null) {
-            //$step = $spot->mapper('App\Step')->findById($this->step_id);
-
-            //$nextStep = $spot->mapper('App\Step')->findById($step->next_id);
-            //while(!$nextStep->checkVisibility($spot, $tq)) {
-                //if ($nextStep->next_id != null) {
-                    //$nextStep = $spot->mapper('App\Step')->findById($nextStep->next_id);
-                    //if ($nextStep->start_id == null) {
-                        //$nextStep = $spot->mapper('App\Step')->findById($nextStep->next_id);
-                    //}
-                //}
-                //else {
-                    //$nextStep = false;
-                    //break;
-                //}
-            //}
-            //if ($nextStep === false) {
-                //throw NotFoundException("End of Steps Reached", 404);
-            //}
-            //$question = $spot->mapper('App\Question')->findById($nextStep->start_id);
-            //if (!$question->checkVisibility($spot, $tq)) {
-                //$nextQuestion= $spot->mapper('App\Question')->findById($question->next_id);
-                //while(!$nextQuestion->checkVisibility($spot, $tq)) {
-                    //if ($nextQuestion->next_id != null) {
-                        //$nextQuestion = $spot->mapper('App\Question')->findById($nextQuestion->next_id);
-                    //} else {
-                        //$nextQuestion = false;
-                        //break;
-                    //}
-                //}
-                //if ($nextQuestion === false) throw new NotFoundException("End of Questions reached");
-                //return $nextQuestion;
-            //}
-            //return $question;
-        //} else {
-            //$nextQuestion = $spot->mapper('App\Question')->findById($this->next_id);
-            //if ($nextQuestion === false) 
-                //throw new NotFoundException("FindNext Question: next Question not found" ,404);
-            //while(!$nextQuestion->checkVisibility($spot, $tq)) {
-                //if ($nextQuestion->next_id != null) {
-                    //$nextQuestion = $spot->mapper('App\Question')->findById($nextQuestion->next_id);
-                //} else {
-                    //$nextQuestion = $nextQuestion->findNext($spot, $tq);
-                    //break;
-                //}
-            //}
-            //if ($nextQuestion === false) throw new NotFoundException("End of Questions reached");
-            //return $nextQuestion;
-        //}
     }
 
     public function clear()
@@ -97,7 +48,7 @@ class Group extends \Spot\Entity
     public static function relations(MapperInterface $mapper, EntityInterface $entity)
     {
         return [
-            'label' => $mapper->belongsTo($entity, 'App\Label', 'label_id')
+            //'label' => $mapper->belongsTo($entity, 'App\Label', 'label_id')
             //'options' => $mapper->hasMany($entity, 'App\Option', 'question_id', $entity->localKey),
             //'logics' => $mapper->hasMany($entity, 'App\Logic', 'question_id', $entity->localKey)
         ];

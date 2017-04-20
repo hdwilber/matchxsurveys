@@ -24,14 +24,14 @@ class Element extends \Spot\Entity
     }
 
     public static $typeMappers= [
-        "question" => "App\\Question",
-        "match-logic" => "App\\MatchLogic",
-        "group" => "App\\Group",
         "questionary" => "App\\Questionary",
-        "match" => "App\\Match",
-        "answer" => "App\\Answer",
+        "group" => "App\\Group",
+        "question" => "App\\Question",
         "option" => "App\\Option",
         "taken-quiz" => "App\\TakenQuiz",
+        "answer" => "App\\Answer",
+        "match-logic" => "App\\MatchLogic",
+        "match" => "App\\Match",
         "logic" => "App\\Logic"
     ];
 
@@ -198,7 +198,6 @@ class Element extends \Spot\Entity
         return [
             'owned' => $mapper->hasOne($entity, static::$typeMappers[$entity->data_type], 'element_id'),
             'label' => $mapper->hasOne($entity, 'App\Label', 'element_id'),
-            'logics' => $mapper->hasMany($entity, 'App\Logic', 'element_id', $entity->localKey),
             'next' => $mapper->belongsTo($entity, 'App\Element', 'next_id'),
             'prev' => $mapper->belongsTo($entity, 'App\Element', 'prev_id'),
             'parent' => $mapper->belongsTo($entity, 'App\Element', 'parent_id'),

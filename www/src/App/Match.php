@@ -46,10 +46,7 @@ class Match extends \Spot\Entity
 
     public static function relations(MapperInterface $mapper, EntityInterface $entity)
     {
-        if($entity->target_type == "question") {
-            return [
-                'question' => $mapper->belongsTo($entity, 'App\Question', 'target_id')
-            ];
-        }
+        return [
+        ];
     }
 }
