@@ -69,6 +69,9 @@ class Logic extends \Spot\Entity
             //return $matchLogic->removeChildren($spot);
         //}
     }
+    public function toString($spot) {
+        return ":: " .$this->action;
+    }
 
     public function clear()
     {

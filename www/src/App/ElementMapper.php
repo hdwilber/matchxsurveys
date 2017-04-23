@@ -45,7 +45,7 @@ class ElementMapper extends BaseMapper
                 $first = $this->findById($e->first_id);
                 $e->data(['first_id' => $n->id]);
                 $this->save($e);
-                return $this->prevTo($first, $n);
+                return $this->_prevTo($first, $n);
             }
         }
         return null;
@@ -60,7 +60,7 @@ class ElementMapper extends BaseMapper
                 $last = $this->findById($e->last_id);
                 $e->data(['last_id' => $n->id]);
                 $this->save($e);
-                return $this->nextTo($last, $n);
+                return $this->_nextTo($last, $n);
             }
         }
         return null;
@@ -88,7 +88,7 @@ class ElementMapper extends BaseMapper
             if (!isset($ch->first_id )) {
                 array_push($ret, $this->_findAllLogics($ch));
             } else {
-                array_push($ret, ['id' => $ch->id, 'type' => $ch->data_type, 'code' => $ch->code, 'data' => $ch->owned, 'label' => ['type' => "text", 'data'=> ""], 'children' => $this->_findAllLogics($ch)
+                array_push($ret, ['id' => $ch->id,'type' => $ch->data_type, 'code' => $ch->code, 'data' => $ch->owned, 'label' => ['type' => "text", 'data'=> ""], 'children' => $this->_findAllLogics($ch)
                 ]);
             }
 
@@ -115,7 +115,7 @@ class ElementMapper extends BaseMapper
                 $retx = $this->findAllLogics($l);
                 array_push($rett, $retx);
             }
-            return ['id' => $e->id, 'type'=> $e->data_type, 'code' => $e->code, 'data' => $e->owned, 'label' => ['type' => $e->label->type, 'data'=>$e->label->data], 'children' => $this->_findAllRecursive($e),
+            return ['id' => (int)$e->id, 'type'=> $e->data_type, 'code' => $e->code, 'data' => $e->owned, 'label' => ['type' => $e->label->type, 'data'=>$e->label->data], 'children' => $this->_findAllRecursive($e),
             'logics' => ['id' => 0, 'type'=> 'root', 'label' => ['type' => 'text', 'data'=>'Logics'], 'children' => $rett]
             ];
         }
@@ -128,7 +128,7 @@ class ElementMapper extends BaseMapper
                 $retx = $this->findAllLogics($l);
                 array_push($rett, $retx);
             }
-            return ['id' => $e->id, 'type'=> $e->data_type, 'code' => $e->code, 'data' => $e->owned, 'label' => ['type' => $e->label->type, 'data'=>$e->label->data], 
+            return ['id' => (int)$e->id, 'type'=> $e->data_type, 'code' => $e->code, 'data' => $e->owned, 'label' => ['type' => $e->label->type, 'data'=>$e->label->data], 
                 'logics' => ['id' => 0, 'type'=> 'root', 'label' => ['type' => 'text', 'data'=>'Logics'], 'children' => $rett ]
             ];
         }
@@ -145,7 +145,7 @@ class ElementMapper extends BaseMapper
                     $retx = $this->findAllLogics($l);
                     array_push($rett, $retx);
                 }
-                array_push($ret, ['id' => $ch->id, 'type' => $ch->data_type, 'code' => $ch->code, 'data' => $ch->owned, 'label' => ['type' => $ch->label->type, 'data'=> $ch->label->data], 'children' => $this->_findAllRecursive($ch),
+                array_push($ret, ['id' => (int)$ch->id, 'type' => $ch->data_type, 'code' => $ch->code, 'data' => $ch->owned, 'label' => ['type' => $ch->label->type, 'data'=> $ch->label->data], 'children' => $this->_findAllRecursive($ch),
                 'logics' => ['id' => 0, 'type'=> 'root', 'label' => ['type' => 'text', 'data'=>'Logics'], 'children' => $rett]
                 ]);
 
@@ -162,7 +162,7 @@ class ElementMapper extends BaseMapper
                         $retx = $this->findAllLogics($l);
                         array_push($rett, $retx);
                     }
-                    array_push($ret, ['id' => $ch->id, 'type'=>$ch->data_type,
+                    array_push($ret, ['id' => (int)$ch->id, 'type'=>$ch->data_type,
                        'code' => $ch->code, 'data' => $ch->owned, 'label' => ['type' => $ch->label->type, 'data'=>$ch->label->data], 'children'=>$this->_findAllRecursive($ch),
                        'logics' => ['id' => 0, 'type'=> 'root', 'label' => ['type' => 'text', 'data'=>'Logics'], 'children' => $rett ]
                    ]);
@@ -227,7 +227,18 @@ class ElementMapper extends BaseMapper
             $p->data(['first_id' => $n->id]);
             $this->save($p);
         }
-        return $this->prevTo($l, $n);
+        return $this->_prevTo($l, $n);
+    }
+
+    public function prevTo($e, $n) {
+        if (isset($e->parent_id)) {
+            $p = $this->findById($e->parent_id);
+            if ($p->first_id == $e->id) {
+                $p->data(['first_id' => $n->id]);
+                $this->save($p);
+            }
+        }
+        return $this->_prevTo($e, $n);
     }
 
     public function append($e, $n) {
@@ -237,10 +248,20 @@ class ElementMapper extends BaseMapper
             $p->data(['last_id' => $n->id]);
             $this->save($p);
         }
-        return $this->nextTo($l, $n);
+        return $this->_nextTo($l, $n);
+    }
+    public function nextTo($e, $n) {
+        if (isset($e->parent_id)) {
+            $p = $this->findById($e->parent_id);
+            if ($p->last_id == $e->id) {
+                $p->data(['last_id' => $n->id]);
+                $this->save($p);
+            } 
+        }
+        return $this->_nextTo($e, $n);
     }
 
-    public function prevTo($e, $n) {
+    public function _prevTo($e, $n) {
         if ($e != null) {
             if ($e->prev_id == null) {
                 $n->data(['next_id' => $e->id]);
@@ -260,7 +281,7 @@ class ElementMapper extends BaseMapper
         return $n;
     }
 
-    public function nextTo($e, $n) {
+    public function _nextTo($e, $n) {
         if ($e != null) {
             if ($e->next_id == null) {
                 $n->data(['prev_id' => $e->id]);
@@ -302,21 +323,21 @@ class ElementMapper extends BaseMapper
             $labelMapper->delete($label);
         }
 
-        // Deleting from parents
-        if ($e->parent_id != null) {
-            $parent = $this->findById($e->parent_id);
+        // Deleting from parent
+        if (isset($e->parent_id)) {
+            $p = $this->findById($e->parent_id);
 
-            if ($parent->first_id == $e->id) {
+            if ($p->first_id == $e->id) {
                 $nf = $e->next_id;
-                $parent->data(['first_id' => $nf]);
+                $p->data(['first_id' => $nf]);
+                $this->save($p);
             }
-            if ($parent->last_id == $e->id) {
+            if ($p->last_id == $e->id) {
                 $nl = $e->prev_id;
-                $parent->data(['last_id' => $nl]);
+                $p->data(['last_id' => $nl]);
+                $this->save($p);
             }
-            $this->save($parent);
         }
-
 
         // Removing index from siblings
         $prev = null; $next = null;
@@ -338,4 +359,66 @@ class ElementMapper extends BaseMapper
 
         $this->delete($e);
     }
+
+    public function move ($d, $e, $as="append-in") {
+        // Deleting from parents
+        if (isset($e->parent_id)) {
+            $parent = $this->findById($e->parent_id);
+            if ($parent->first_id == $e->id) {
+                $nf = $e->next_id;
+                $parent->data(['first_id' => $nf]);
+                $this->save($parent);
+            }
+            if ($parent->last_id == $e->id) {
+                $nl = $e->prev_id;
+                $parent->data(['last_id' => $nl]);
+                $this->save($parent);
+            }
+        }
+       
+        // Removing index from siblings
+        $prev = null; $next = null;
+        if (isset($e->prev_id)){
+            $prev = $this->findById($e->prev_id);
+        }
+        if ($e->next_id != null) {
+            $next = $this->findById($e->next_id);
+        }
+
+        if (isset($prev)) {
+            $prev->data(['next_id' => ($next ==null)? null: $next->id]);
+            $this->save($prev);
+        }
+        if (isset($next)) {
+            $next->data(['prev_id' => ($prev == null)?null: $prev->id]);
+            $this->save($next);
+        }
+
+        $e->data(['prev_id' => null, 'next_id'=> null, 'parent_id' => null]);
+        $this->save($e);
+        
+        $res = null;
+        switch ($as) {
+            case "append-in": 
+                $res = $this->appendIn($d, $e);
+                break;
+            case "prepend-in": 
+                $res = $this->prependIn($d, $e);
+                break;
+            case "prepend": 
+                $res = $this->appendIn($d, $e);
+                break;
+            case "append": 
+                $res = $this->appendIn($d, $e);
+                break;
+            case "prev-to": 
+                $res = $this->prevTo($d, $e);
+                break;
+            case "next-to": 
+                $res = $this->nextTo($d, $e);
+                break;
+        }
+        return ($res != null);
+    }
+
 }

@@ -44,6 +44,14 @@ class Match extends \Spot\Entity
         ]);
     }
 
+    public function toString($mapper) {
+        $question = $mapper->findById($this->target_question_id, ['owned', 'label']);
+        $option = $mapper->findById($this->target_option_id, ['owned', 'label']);
+
+        return $question->code. ": " . $option->label->data;
+    }
+
+
     public static function relations(MapperInterface $mapper, EntityInterface $entity)
     {
         return [

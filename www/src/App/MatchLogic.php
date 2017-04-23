@@ -35,6 +35,10 @@ class MatchLogic extends \Spot\Entity
         $emitter->on("beforeUpdate", function (EntityInterface $entity, MapperInterface $mapper) {
         });
     }
+
+    public function toString($mapper) {
+        return isset($this->bool)? "-> " .$this->bool: '+';
+    }
     public function buildHierarchy($spot) {
         //if ($this->target_type == "match") {
             //$match = $spot->mapper("App\Match")->findById($this->target_id);
