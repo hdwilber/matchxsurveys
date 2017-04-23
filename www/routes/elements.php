@@ -163,6 +163,37 @@ $app->get(getenv("API_ROOT"). "/elements/roots/all", function ($request, $respon
     return $response->withStatus(201)
         ->withHeader("Content-Type", "application/json")
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+});
+
+$app->post(getenv("API_ROOT") . "/elements/{id}/move", function ($request, $response, $arguments) {
+    if (false === $this->token->hasScope(["question.all", "question.create"])) {
+        throw new ForbiddenException("Token not allowed to create questions.", 403);
+    }
+
+    $mapper = $this->spot->mapper("App\Element");
+    $el = $mapper->findById($arguments['id'], ['owned','label']);
+    if ($el === false) {
+        throw new NotFoundException("Element not found", 404);
+    }
+
+    $body = $request->getParsedBody();
+    $eRef = $mapper->findById($body['eRef'], ['owned','label']);
+    if ($eRef === false) {
+        throw new NotFoundException("Element EREF not found", 404);
+    }
+
+    $body['addingType'] = isset($body['addingType']) ? $body['addingType'] : 'append-in';
+
+    $result = $mapper->move ($eRef, $el, $body['addingType']);
+
+    $data['data'] = isset($result);
+    $data["status"] = "ok";
+    $data["message"] = "Moved Element";
+
+    return $response->withStatus(201)
+        ->withHeader("Content-Type", "application/json")
+        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+    
 
 });
 
@@ -224,6 +255,8 @@ $app->patch(getenv("API_ROOT"). "/elements/{id}", function ($request, $response,
             $data = [
                 'type'=>isset($body['qType']) ? $body['qType']: $el->owned->type, 
                 'sub_type' => (isset($body['qSubType'])? $body['qSubType'] : $el->owned->sub_type),
+                'linked' => (isset($body['qLinked'])? $body['qLinked'] : $el->owned->linked),
+                'value' => (isset($body['qValue'])? $body['qValue'] : $el->owned->value),
                 'default_visibility' => (isset($body['visibility']) ? $body['visibility'] : $el->owned->default_visibility)
             ];
             break;
@@ -328,6 +361,8 @@ $app->post(getenv("API_ROOT"). "/elements", function ($request, $response, $argu
             $data = [
                 'type'=>$body['qType'], 
                 'sub_type' => (isset($body['qSubType'])? $body['qSubType'] : null),
+                'linked' => (isset($body['qLinked'])? $body['qLinked'] : false),
+                'value' => (isset($body['qValue'])? $body['qValue'] : null),
                 'default_visibility' => (isset($body['visibility']) ? $body['visibility'] : null)
             ];
             break;
@@ -418,10 +453,10 @@ $app->post(getenv("API_ROOT"). "/elements", function ($request, $response, $argu
         $mapper->save($new);
     }
 
-    $fractal = new Manager();
-    $fractal->setSerializer(new DataArraySerializer);
+    //$fractal = new Manager();
+    //$fractal->setSerializer(new DataArraySerializer);
 
-    $trans = null;
+    //$trans = null;
     //switch($new->data_type) {
         //case 'question': 
             //$trans = new QuestionTransformer();
@@ -442,9 +477,12 @@ $app->post(getenv("API_ROOT"). "/elements", function ($request, $response, $argu
             //$trans = new MatchTransformer();
             //break;
     //}
-    $resource = new Item($new, new ElementTransformer());
-    $data = $fractal->createData($resource)->toArray();
-    $data['data']['data'] = $idata;
+    //$resource = new Item($new, new ElementTransformer());
+    //$data = $fractal->createData($resource)->toArray();
+
+    $new->owned = $idata;
+
+    $data['data'] = $mapper->findAllRecursive($new);
     $data["status"] = "ok";
     $data["message"] = "New Element created";
 
