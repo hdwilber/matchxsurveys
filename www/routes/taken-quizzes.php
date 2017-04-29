@@ -22,25 +22,6 @@ use League\Fractal\Resource\Item;
 use League\Fractal\Resource\Collection;
 use League\Fractal\Serializer\DataArraySerializer;
 
-//$app->get(getenv("API_ROOT"). "/taken-quizzes/{takenQuizId}/questions/{questionId}/evaluate", function ($request, $response, $arguments) {
-    //$mapper = $this->spot->mapper("App\TakenQuiz");
-    //$quMapper = $this->spot->mapper("App\Question");
-    
-    //$takenQuiz = $mapper->findById($arguments['takenQuizId']);
-    //if ($takenQuiz === false) throw new NotFoundException("Taken Quiz not found", 404);
-    //$question = $quMapper->findById($arguments['questionId']);
-    //if ($question === false) throw new NotFoundException("Taken Quiz: Question not found", 404);
-
-    //$data = [];
-    //$data['show'] = $question->check($this->spot, 'show', $takenQuiz); 
-    //$data['hide'] = $question->check($this->spot, 'hide', $takenQuiz); 
-    //$data['visibility'] = $question->checkVisibility($this->spot, $takenQuiz); 
-
-    //return $response->withStatus(200)
-        //->withHeader("Content-Type", "application/json")
-        //->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-//});
-
 $app->get(getenv("API_ROOT"). "/taken-quizzes", function ($request, $response, $arguments) {
 
     if (false === $this->token->hasScope(["question.all", "question.list"])) {
@@ -126,7 +107,8 @@ $app->get(getenv("API_ROOT"). "/taken-quizzes/{id}/history", function ($request,
         ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 
 });
-$app->get(getenv("API_ROOT"). "/taken-quizzes/{uid}", function ($request, $response, $arguments) {
+
+$app->get(getenv("API_ROOT") . "/taken-quizzes/{uid}", function ($request, $response, $arguments) {
 
     /* Check if token has needed scope. */
     if (false === $this->token->hasScope(["question.all", "question.read"])) {

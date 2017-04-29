@@ -162,9 +162,8 @@ $app->post(getenv("API_ROOT"). "/taken-quizzes/{id}/answers", function ($request
     }
 
     $body = $request->getParsedBody();
-    //$this->logger->addInfo("STARTING LOOKING FOR ANSWER");
     $question = false;
-    if($body['id'] == null) {
+    if(!isset($body['id'])) {
         if ($tq->first_id == null) {
             $question = $mapper->getMapper("App\Questionary")->findNextQuestion($this->logger, $quest, $tq, null);
 

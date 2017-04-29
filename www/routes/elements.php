@@ -274,7 +274,9 @@ $app->patch(getenv("API_ROOT"). "/elements/{id}", function ($request, $response,
             ];
             break;
         case 'questionary':
-            $data = [];
+            $data = [
+                'type' => isset($body['quType']) ? $body['quType']: $el->owned->type
+            ];
             break;
             //Logics Elements
         case 'match-logic': 
@@ -380,7 +382,9 @@ $app->post(getenv("API_ROOT"). "/elements", function ($request, $response, $argu
             ];
             break;
         case 'questionary':
-            $data = [];
+            $data = [
+                'type' => isset($body['quType']) ? $body['quType']: null
+            ];
             break;
             //Logics Elements
         case 'match-logic': 

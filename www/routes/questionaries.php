@@ -13,6 +13,17 @@ use League\Fractal\Resource\Item;
 use League\Fractal\Resource\Collection;
 use League\Fractal\Serializer\DataArraySerializer;
 
+$app->get(getenv("API_ROOT"). "/questionaries/types", function ($request, $response, $arguments) {
+
+    $data['data'] = Questionary::$types;
+    $data["status"] = "ok";
+    $data["message"] = "List of Types";
+    return $response->withStatus(200)
+        ->withHeader("Content-Type", "application/json")
+        ->write(json_encode($data, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+});
+
+
 $app->get(getenv("API_ROOT"). "/questionaries", function ($request, $response, $arguments) {
 
     /* Check if token has needed scope. */
