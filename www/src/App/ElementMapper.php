@@ -396,28 +396,39 @@ class ElementMapper extends BaseMapper
 
         $e->data(['prev_id' => null, 'next_id'=> null, 'parent_id' => null]);
         $this->save($e);
-        
+
         $res = null;
+        $parent= null;
         switch ($as) {
             case "append-in": 
                 $res = $this->appendIn($d, $e);
+                $parent = $d->id;
                 break;
             case "prepend-in": 
                 $res = $this->prependIn($d, $e);
+                $parent = $d->id;
                 break;
             case "prepend": 
                 $res = $this->appendIn($d, $e);
+                $parent = $d->parent_id;
                 break;
             case "append": 
                 $res = $this->appendIn($d, $e);
+                $parent = $d->parent_id;
                 break;
             case "prev-to": 
                 $res = $this->prevTo($d, $e);
+                $parent = $d->parent_id;
                 break;
             case "next-to": 
                 $res = $this->nextTo($d, $e);
+                $parent = $d->parent_id;
                 break;
         }
+
+        $res->data(['parent_id' => $parent]);
+        $this->save($res);
+        
         return ($res != null);
     }
 

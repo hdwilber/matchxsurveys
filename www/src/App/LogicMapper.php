@@ -15,7 +15,7 @@ class LogicMapper extends ElementMapper
 
     
     public function check($logger, $e, $action, $tq) {
-        $los = $this->getMapper("App\Element")->findAllByTypeFrom($e, "logic", ['owned'])->getIterator();
+        $los = $this->getMapper("App\Element")->findAllByTypeFrom($e, "logic", ['owned']);
 
         $ret = null;
 

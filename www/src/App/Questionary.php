@@ -15,10 +15,16 @@ class Questionary extends \Spot\Entity
     protected static $table = "questionaries";
     protected static $mapper = "App\Mapper\QuestionaryMapper";
 
+    public static $types = [
+        ['name' => 'Wizard', 'code' => 'wizard'],
+        ['name' => 'Single', 'code' => 'single']
+    ];
+
     public static function fields()
     {
         return [
             "id" => ["type" => "integer", "unsigned" => true, "autoincrement" => true, "primary" => true],
+            "type" => ["type" => "string", "value" => "wizard"],
             "element_id" => ['type' => 'integer']
         ];
     }
